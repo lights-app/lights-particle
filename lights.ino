@@ -1,3 +1,5 @@
+// Enable system threading to ensure main loop continues regardless of cloud connection
+SYSTEM_THREAD(ENABLED);
 
 #include "main.h"
 #include "PhotonPWM.h"
