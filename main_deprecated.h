@@ -9,7 +9,6 @@ class Channel {
     
   
   public:
-    
     Channel(byte, byte, byte);
     
     byte pin[3];
