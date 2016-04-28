@@ -55,6 +55,9 @@ public:
     // Determines if the timer is enabled
     bool enabled;
 
+    // Determines if the timer has elapsed. Reset every 24 hours
+    bool hasElapsed;
+
     // Determines which point in time is used as a reference: 0 = timer off; 1 = 12:00; 2 = sunrise; 3 = sunset
     byte zeroPointSelector;
 
@@ -96,9 +99,14 @@ public:
     Channels channels;
     LightsTimer timers[timerCount];
     PhotonPWM output;
+
     double longitude;
     double latitude;
     byte today[6];
+    byte sunriseHour;
+    byte sunriseMinute;
+    byte sunsetHour;
+    byte sunsetMinute;
 
     bool processColorData(String args);
     bool processTimerData(String args);

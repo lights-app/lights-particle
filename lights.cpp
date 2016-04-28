@@ -17,7 +17,7 @@ Channel::Channel(byte r, byte g, byte b) {
 Lights::Lights() {
 
     // Initialise PWM pins
-    output.initTimers();
+    // output.initTimers();
 
 }
 

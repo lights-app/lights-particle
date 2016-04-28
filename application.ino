@@ -29,6 +29,9 @@ void setup() {
     Particle.variable("lightsConfig", lights.channels.lightsConfig);
     Serial.begin(9600);
 
+    // Check for daylight savings time
+    Time.zone(isDST(Time.day(), Time.month(), Time.weekday())? +2 : +1);
+
     // Request time synchronization from the Particle Cloud
     Particle.syncTime();
 
@@ -46,6 +49,9 @@ void setup() {
     lights.today[4] = Time.month();
     lights.today[5] = Time.year();
 
+    // Initialise the Photon's 16-Bit timers
+    lights.output.initTimers();
+
 }
 
 void loop() {
@@ -59,6 +65,7 @@ void loop() {
     if (millis() - lastSyncTime > SYNC_TIME_INTERVAL) {
 
         // Check for daylight savings time
+        // Do this every hour to ensure Photon is not running behind/fast the first day after DST
         Time.zone(isDST(Time.day(), Time.month(), Time.weekday())? +2 : +1);
         
         // Request time synchronization from the Particle Cloud
@@ -67,24 +74,41 @@ void loop() {
 
     }
 
-    // Execute things every 10 seconds
-    if (millis() % 10000 == 0) {
+    // Execute things every second
+    if (millis() % 1000 == 0) {
 
-        if (timeLord.SunRise(lights.today)) {
+        Serial.print(Time.hour());
+        Serial.print(":");
+        Serial.print(Time.minute());
+        Serial.print(":");
+        Serial.print(Time.second());
+        Serial.println();
 
-            Serial.print("Sunrise: ");
-            Serial.print((int) lights.today[tl_hour]);
-            Serial.print(":");
-            Serial.println((int) lights.today[tl_minute]);
+        // Execute things once a day at midnight
+        if (Time.hour() == 0 && Time.minute() == 0 && Time.second() == 0) {
 
-        }
+            Serial.println("Setting sun times");
 
-        if (timeLord.SunSet(lights.today)) {
+            if (timeLord.SunRise(lights.today)) {
 
-            Serial.print("Sunset: ");
-            Serial.print((int) lights.today[tl_hour]);
-            Serial.print(":");
-            Serial.println((int) lights.today[tl_minute]);
+                lights.sunriseHour = lights.today[tl_hour];
+                lights.sunriseMinute = lights.today[tl_minute];
+
+            }
+
+            if (timeLord.SunSet(lights.today)) {
+
+                lights.sunsetHour = lights.today[tl_hour];
+                lights.sunsetMinute = lights.today[tl_minute];
+
+            }
+
+            // Reset all timers
+            for (byte i = 0; i < lights.timerCount; i++) {
+
+                lights.timers[i].hasElapsed = false;
+
+            }
 
         }
 
