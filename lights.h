@@ -2,6 +2,7 @@
 
 #include "application.h"
 #include "PhotonPWM.h"
+#include "TimeLord.h"
 
 class Channel {
 
@@ -10,7 +11,7 @@ private:
 
 public:
 
-    Channel(byte, byte, byte);
+    Channel(byte r, byte g, byte b);
     
     byte pin[3];
     uint16_t value[3] = {0, 0, 0};
@@ -61,6 +62,9 @@ public:
     // Determines which point in time is used as a reference: 0 = timer off; 1 = 12:00; 2 = sunrise; 3 = sunset
     byte zeroPointSelector;
 
+    // The zero point in seconds from 00:00. 0-86399 seconds
+    int zeroPoint;
+
     // Offset from zero point. Each value represents 1 second. -43.200 or +43.200 relative to zero point (86400 seconds per day)
     // Since we can't send negative values, 43.200 will be subtracted from the received value
     int zeroPointOffset;
@@ -80,7 +84,7 @@ public:
     // The second at which the timer should start
     byte second;
 
-    // Color value the lights should be when timer runs. Not used when 
+    // Color value the lights should be when timer runs
     uint16_t value[3];
 
 };
@@ -94,23 +98,30 @@ public:
 
     Lights();
 
+    // Variables
     const static byte channelCount = 2;
     const static byte timerCount = 8;
     Channels channels;
     LightsTimer timers[timerCount];
     PhotonPWM output;
+    TimeLord timeLord;
 
     double longitude;
     double latitude;
     byte today[6];
     byte sunriseHour;
     byte sunriseMinute;
+    unsigned int sunriseZeroPoint;
     byte sunsetHour;
     byte sunsetMinute;
+    unsigned int sunsetZeroPoint;
 
+    // Functions
     bool processColorData(String args);
     bool processTimerData(String args);
     void interpolateColors();
+    void checkTimers();
     int combineBytes(byte bytes[], byte amountOfBytes);
+    void updateSunTimes();
 
 };

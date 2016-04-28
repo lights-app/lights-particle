@@ -3,7 +3,7 @@
 #include "math.h"
 
 Channel::Channel(byte r, byte g, byte b) {
-    
+
     pin[0] = r;
     pin[1] = g;
     pin[2] = b;
@@ -35,13 +35,13 @@ bool Lights::processColorData(String args) {
         channels.lightsConfig = args;
         
         for (byte i = 0; i < channelCount; i++) {
-            
+
             Serial.print("Color channel " + String(i) +  ": ");
             
             if (bitRead(args[1], i) == 1 ){
-                
+
                 // Serial.print("Channel " + String(i) + " should be on");
-                
+
                 channels.channel[i].isOff = false;
                 channels.channel[i].turnOff = false;
                 channels.channel[i].turnOn = true;
@@ -51,7 +51,7 @@ bool Lights::processColorData(String args) {
                 channels.interpolationTime = combineBytes(values, 3) * 100;
                 
                 for (byte j = 0; j < 3; j++) {
-                    
+
                     // Assign the currentValue to the value so colors transition from the correct color during an active transition
                     channels.channel[i].value[j] = channels.channel[i].currentValue[j];
                     
@@ -77,9 +77,9 @@ bool Lights::processColorData(String args) {
                     // Serial.println(channels.channel[i].target[j]);
                     
                 }
-            
+
             } else {
-                
+
                 channels.channel[i].turnOff = true;
                 channels.channel[i].turnOn = false;
                 
@@ -93,9 +93,9 @@ bool Lights::processColorData(String args) {
         channels.startTime = millis();
 
         return true;
-    
+
     } else {
-        
+
         return false;
         
     }
@@ -113,16 +113,54 @@ bool Lights::processTimerData(String args) {
         Serial.println("Timer Number: " + String(timerNumber));
 
         // Set the zero point selector
+        // Determines which point in time is used as a reference: 0 = timer off; 1 = 12:00; 2 = sunrise; 3 = sunset
         timers[timerNumber].zeroPointSelector = args[2] - 1;
         Serial.println("Zero point selector: " + String(timers[timerNumber].zeroPointSelector));
 
         // If the zero point selector is 0, the timer should be disabled
         (args[2] == 0)? timers[timerNumber].enabled = false : timers[timerNumber].enabled = true;
 
-        // Set the zero point offset by combining the next 3 bytes. Subtract 43.200 to get the correct (possibly negative) value. Multiply by 1000 to convert to milliseconds
+        // Set the zero point offset by combining the next 3 bytes. Subtract 43.199 to get the correct (possibly negative) value
         byte values[3] = {args[3] - 1, args[4] - 1, args[5] - 1};
-        timers[timerNumber].zeroPointOffset = (combineBytes(values, 3) - 43200) * 1000;
+        timers[timerNumber].zeroPointOffset = (combineBytes(values, 3) - 43199);
         Serial.println("Zero point offset: " + String(timers[timerNumber].zeroPointOffset));
+
+        int value = 0;
+
+        if (timers[timerNumber].zeroPointSelector == 1) {
+
+            value = 43199 + timers[timerNumber].zeroPointOffset;
+            timers[timerNumber].zeroPoint = 43199;
+
+        } else if (timers[timerNumber].zeroPointSelector == 2) {
+
+            value = sunriseZeroPoint + timers[timerNumber].zeroPointOffset;
+            timers[timerNumber].zeroPoint = sunriseZeroPoint;
+
+        } else if (timers[timerNumber].zeroPointSelector == 3) {
+            value = sunsetZeroPoint + timers[timerNumber].zeroPointOffset;
+            timers[timerNumber].zeroPoint = sunsetZeroPoint;
+
+        }
+
+        timers[timerNumber].hour = floor(value / 60 / 60);
+        timers[timerNumber].minute = floor((value - (timers[timerNumber].hour * 60 * 60)) / 60);
+        timers[timerNumber].second = value - (timers[timerNumber].hour * 60 * 60) - (timers[timerNumber].minute * 60);
+
+        if (timers[timerNumber].enabled) {
+
+            Serial.println("This timer will run at: ");
+            Serial.print(timers[timerNumber].hour);
+            Serial.print(":");
+            Serial.print(timers[timerNumber].minute);
+            Serial.print(":");
+            Serial.print(timers[timerNumber].second);
+
+        } else {
+
+            Serial.println("The timer has been disabled");
+
+        }
 
         // Set the interpolation time. Multiply the value by 100 to convert to milliseconds
         byte values2[3] = {args[6] - 1, args[7] - 1, args[8] - 1};
@@ -139,7 +177,7 @@ bool Lights::processTimerData(String args) {
 
             byte values[2] = {args[10 + i] - 1, args[10 + i + 1] - 1};
             timers[timerNumber].value[i] = combineBytes(values, 2);
-                    
+
             // Map the received value to a 16-Bit equivalent
             timers[timerNumber].value[i] = map(timers[timerNumber].value[i], 0, maxVal, 0, 65535);
             Serial.println("Color value: " + String(timers[timerNumber].value[i]));
@@ -161,7 +199,7 @@ bool Lights::processTimerData(String args) {
 void Lights::interpolateColors() {
 
     if (millis() < channels.startTime + channels.interpolationTime) {
-        
+
         double t = millis() - channels.startTime;
         // Serial.println(t);
         double perc = t / (double)channels.interpolationTime;
@@ -170,9 +208,9 @@ void Lights::interpolateColors() {
         
         for (byte i = 0; i < channelCount; i++) {
             // Serial.println("Writing out channel " + String(i));
-            
+
             for (byte j = 0; j < 3; j++) {
-                
+
                 double factor = 0.5 * cos((3.1415 * perc) + 3.1415) + 0.5;
                 // Serial.println(factor);
                 int val = channels.channel[i].value[j] + (factor * (channels.channel[i].target[j] - channels.channel[i].value[j]));
@@ -186,20 +224,38 @@ void Lights::interpolateColors() {
         }
         
     } else {
-        
+
         channels.targetValueReached = true;
         
         for (byte i = 0; i < channelCount; i++) {
         // Serial.println("Writing out channel " + String(i));
-        
-        for (byte j = 0; j < 3; j++) {
-                
+
+            for (byte j = 0; j < 3; j++) {
+
                 channels.channel[i].value[j] = channels.channel[i].target[j];
                 
             }
             
         }
         
+    }
+
+}
+
+void Lights::checkTimers() {
+
+    for (byte i = 0; i < timerCount; i++) {
+
+        if (timers[i].hour == Time.hour() && timers[i].minute == Time.minute() && timers[i].second == Time.second()) {
+
+            if (timers[i].mode == 0) {
+
+                (i % 4 == 0)? channels.channel[0].turnOff = true : channels.channel[1].turnOff = true;
+
+            }
+
+        }
+
     }
 
 }
@@ -216,5 +272,51 @@ int Lights::combineBytes(byte bytes[], byte amountOfBytes) {
     }
 
     return value;
+
+}
+
+void Lights::updateSunTimes() {
+
+    Serial.println("Setting sun times");
+
+    if (timeLord.SunRise(today)) {
+
+        sunriseHour = today[tl_hour];
+        sunriseMinute = today[tl_minute];
+
+                // Calculate and set the zero point for the sunrise. Helps in timer configurations
+        sunriseZeroPoint = (sunriseHour * 3600) + (sunriseMinute * 60);
+
+        Serial.println();
+        Serial.print("Sunrise will be at: ");
+        Serial.print(sunriseHour);
+        Serial.print(":");
+        Serial.print(sunriseMinute);
+        Serial.println();
+        Serial.print("Zero Point for sunrise: ");
+        Serial.print(sunriseZeroPoint);
+        Serial.println();
+
+    }
+
+    if (timeLord.SunSet(today)) {
+
+        sunsetHour = today[tl_hour];
+        sunsetMinute = today[tl_minute];
+
+                // Calculate and set the zero point for the sunrise. Helps in timer configurations
+        sunsetZeroPoint = (sunsetHour * 3600) + (sunsetMinute * 60);
+
+        Serial.println();
+        Serial.print("Sunset will be at: ");
+        Serial.print(sunsetHour);
+        Serial.print(":");
+        Serial.print(sunsetMinute);
+        Serial.println();
+        Serial.print("Zero Point for sunset: ");
+        Serial.print(sunsetZeroPoint);
+        Serial.println();
+
+    }
 
 }

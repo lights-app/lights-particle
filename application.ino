@@ -7,7 +7,6 @@ SYSTEM_MODE(AUTOMATIC);
 // #include "main.h"
 #include "lights.h"
 #include "PhotonPWM.h"
-#include "TimeLord.h"
 #include "math.h"
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 
@@ -17,9 +16,6 @@ Lights lights;
 // Set syncTime interval
 #define SYNC_TIME_INTERVAL (60 * 60 * 1000)
 unsigned long lastSyncTime = millis();
-
-// Create new instance of TimeLord
-TimeLord timeLord;
 
 void setup() {
 
@@ -38,9 +34,10 @@ void setup() {
     lights.longitude = 4.3571;
     lights.latitude = 52.0116;
 
-    // Set timezone for timeLord. In minutes.
-    timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
-    timeLord.Position(lights.latitude, lights.longitude);
+    // Set timezone for timeLord (in minutes).
+    lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
+    lights.timeLord.Position(lights.latitude, lights.longitude);
+    lights.updateSunTimes();
 
     lights.today[0] = 0;
     lights.today[1] = 0;
@@ -77,31 +74,17 @@ void loop() {
     // Execute things every second
     if (millis() % 1000 == 0) {
 
-        Serial.print(Time.hour());
-        Serial.print(":");
-        Serial.print(Time.minute());
-        Serial.print(":");
-        Serial.print(Time.second());
-        Serial.println();
+        // Serial.print(Time.hour());
+        // Serial.print(":");
+        // Serial.print(Time.minute());
+        // Serial.print(":");
+        // Serial.print(Time.second());
+        // Serial.println();
 
         // Execute things once a day at midnight
         if (Time.hour() == 0 && Time.minute() == 0 && Time.second() == 0) {
 
-            Serial.println("Setting sun times");
-
-            if (timeLord.SunRise(lights.today)) {
-
-                lights.sunriseHour = lights.today[tl_hour];
-                lights.sunriseMinute = lights.today[tl_minute];
-
-            }
-
-            if (timeLord.SunSet(lights.today)) {
-
-                lights.sunsetHour = lights.today[tl_hour];
-                lights.sunsetMinute = lights.today[tl_minute];
-
-            }
+            lights.updateSunTimes();
 
             // Reset all timers
             for (byte i = 0; i < lights.timerCount; i++) {
@@ -151,6 +134,12 @@ int parseCommand(String args) {
             return 400;
             
         }
+        
+    }
+
+    if (args[0] == 's') {
+
+        lights.updateSunTimes();
         
     }
     
