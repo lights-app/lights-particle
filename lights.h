@@ -68,6 +68,15 @@ public:
     // Timer mode: 0 = turns off the lights, 1 = turns on the lights with the last stored color values, 2 = turns on lights with color values stored in the timer
     byte mode;
 
+    // The hour at which the timer should start
+    byte hour;
+
+    // The minute at which the timer should start
+    byte minute;
+
+    // The second at which the timer should start
+    byte second;
+
     // Color value the lights should be when timer runs. Not used when 
     uint16_t value[3];
 
@@ -87,6 +96,9 @@ public:
     Channels channels;
     LightsTimer timers[timerCount];
     PhotonPWM output;
+    double longitude;
+    double latitude;
+    byte today[6];
 
     bool processColorData(String args);
     bool processTimerData(String args);

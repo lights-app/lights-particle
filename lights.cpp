@@ -116,6 +116,9 @@ bool Lights::processTimerData(String args) {
         timers[timerNumber].zeroPointSelector = args[2] - 1;
         Serial.println("Zero point selector: " + String(timers[timerNumber].zeroPointSelector));
 
+        // If the zero point selector is 0, the timer should be disabled
+        (args[2] == 0)? timers[timerNumber].enabled = false : timers[timerNumber].enabled = true;
+
         // Set the zero point offset by combining the next 3 bytes. Subtract 43.200 to get the correct (possibly negative) value. Multiply by 1000 to convert to milliseconds
         byte values[3] = {args[3] - 1, args[4] - 1, args[5] - 1};
         timers[timerNumber].zeroPointOffset = (combineBytes(values, 3) - 43200) * 1000;
@@ -202,13 +205,13 @@ void Lights::interpolateColors() {
 }
 
 int Lights::combineBytes(byte bytes[], byte amountOfBytes) {
-    Serial.println(amountOfBytes);
+    // Serial.println(amountOfBytes);
     int value = 0;
 
     for (byte i = 0; i < amountOfBytes; i++) {
 
         value += bytes[i] * pow(127, (amountOfBytes - 1) - i);
-        Serial.println(value);
+        // Serial.println(value);
 
     }
 
