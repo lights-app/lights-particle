@@ -4,42 +4,46 @@
 #include "PhotonPWM.h"
 #include "TimeLord.h"
 
-class Channel {
 
-private:
-
-
-public:
-
-    Channel(byte r, byte g, byte b);
-    
-    byte pin[3];
-    uint16_t value[3] = {0, 0, 0};
-    uint16_t target[3] = {0, 0, 0};
-    uint16_t currentValue[3] = {0, 0, 0};
-    
-    const int off[3] = {0, 0, 0};
-    bool turnOff;
-    bool turnOn;
-    bool isOff;
-
-};
 
 class Channels {
     
-    private:
-        
+private:
     
-    public:
+    
+public:
     
         // Channels();
-        String lightsConfig = "";
+    String lightsConfig = "";
+    
+    unsigned int interpolationTime;
+    unsigned int startTime;
+    bool targetValueReached;
+
+    class Channel {
+
+    private:
+
+
+    public:
+
+        Channel(byte r, byte g, byte b);
+
+        byte pin[3];
+        uint16_t value[3] = {0, 0, 0};
+        uint16_t target[3] = {0, 0, 0};
+        uint16_t currentValue[3] = {0, 0, 0};
+        uint16_t savedValue[3] = {0, 0, 0};
         
-        unsigned int interpolationTime;
-        unsigned int startTime;
-        bool targetValueReached = false;
-        
-        Channel channel[2] = {Channel(D0, D1, D2), Channel(WKP, RX, TX)};
+        const uint16_t off[3] = {0, 0, 0};
+        bool isOff;
+
+        void turnOff();
+        void turnOn();
+
+    };
+    
+    Channel channel[2] = {Channel(D0, D1, D2), Channel(WKP, RX, TX)};
     
 };
 

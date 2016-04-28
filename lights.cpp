@@ -2,16 +2,34 @@
 #include "PhotonPWM.h"
 #include "math.h"
 
-Channel::Channel(byte r, byte g, byte b) {
+Channels::Channel::Channel(byte r, byte g, byte b) {
 
     pin[0] = r;
     pin[1] = g;
     pin[2] = b;
     
     for (byte i = 0; i < 3; i++) {
+
         pinMode(pin[i], OUTPUT);
+
     }
     
+}
+
+void Channels::Channel::turnOn() {
+
+    
+
+}
+
+void Channels::Channel::turnOff() {
+
+    for (byte i = 0; i < 3; i++) {
+
+        savedValue[i] = value[i];
+
+    }
+
 }
 
 Lights::Lights() {
@@ -43,8 +61,6 @@ bool Lights::processColorData(String args) {
                 // Serial.print("Channel " + String(i) + " should be on");
 
                 channels.channel[i].isOff = false;
-                channels.channel[i].turnOff = false;
-                channels.channel[i].turnOn = true;
 
                 // Set interpolation time. Multiply by 100 to get from 0.1s increments to 1ms increments
                 byte values[3] = {args[2] - 1, args[3] - 1, args[4] - 1};
@@ -80,8 +96,7 @@ bool Lights::processColorData(String args) {
 
             } else {
 
-                channels.channel[i].turnOff = true;
-                channels.channel[i].turnOn = false;
+                channels.channel[i].turnOff();
                 
             }
             
@@ -175,7 +190,7 @@ bool Lights::processTimerData(String args) {
 
         for (byte i = 0; i < 3 * 2; i+= 2) {
 
-            byte values[2] = {args[10 + i] - 1, args[10 + i + 1] - 1};
+            byte values[2] = {(byte)(args[10 + i] - 1), (byte)(args[10 + i + 1] - 1)};
             timers[timerNumber].value[i] = combineBytes(values, 2);
 
             // Map the received value to a 16-Bit equivalent
@@ -213,9 +228,8 @@ void Lights::interpolateColors() {
 
                 double factor = 0.5 * cos((3.1415 * perc) + 3.1415) + 0.5;
                 // Serial.println(factor);
-                int val = channels.channel[i].value[j] + (factor * (channels.channel[i].target[j] - channels.channel[i].value[j]));
-                output.analogWrite16GC(channels.channel[i].pin[j], val);
-                channels.channel[i].currentValue[j] = val;
+                channels.channel[i].currentValue[j] = channels.channel[i].value[j] + (factor * (channels.channel[i].target[j] - channels.channel[i].value[j]));
+                output.analogWrite16GC(channels.channel[i].pin[j], channels.channel[i].currentValue[j]);
                 
                 // Serial.println(val);
                 
@@ -250,7 +264,7 @@ void Lights::checkTimers() {
 
             if (timers[i].mode == 0) {
 
-                (i % 4 == 0)? channels.channel[0].turnOff = true : channels.channel[1].turnOff = true;
+                // (i % 4 == 0)? channels.channel[0].turnOff() : channels.channel[1].turnOff();
 
             }
 
