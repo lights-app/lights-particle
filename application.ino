@@ -73,6 +73,7 @@ void loop() {
 
     // Execute things every second
     if (millis() % 1000 == 0) {
+        lights.checkTimers();
 
         // Serial.print(Time.hour());
         // Serial.print(":");
@@ -140,7 +141,7 @@ int parseCommand(String args) {
     if (args[0] == 's') {
 
         lights.updateSunTimes();
-        
+
     }
     
 

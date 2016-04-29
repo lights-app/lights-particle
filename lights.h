@@ -7,18 +7,6 @@
 
 
 class Channels {
-    
-private:
-    
-    
-public:
-    
-        // Channels();
-    String lightsConfig = "";
-    
-    unsigned int interpolationTime;
-    unsigned int startTime;
-    bool targetValueReached;
 
     class Channel {
 
@@ -34,7 +22,7 @@ public:
         uint16_t target[3] = {0, 0, 0};
         uint16_t currentValue[3] = {0, 0, 0};
         uint16_t savedValue[3] = {0, 0, 0};
-        
+
         const uint16_t off[3] = {0, 0, 0};
         bool isOff;
 
@@ -42,7 +30,19 @@ public:
         void turnOn();
 
     };
-    
+
+private:
+
+
+public:
+
+        // Channels();
+    String lightsConfig = "";
+
+    unsigned int interpolationTime;
+    unsigned int startTime;
+    bool targetValueReached;
+
     Channel channel[2] = {Channel(D0, D1, D2), Channel(WKP, RX, TX)};
     
 };

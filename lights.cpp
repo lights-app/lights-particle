@@ -18,7 +18,12 @@ Channels::Channel::Channel(byte r, byte g, byte b) {
 
 void Channels::Channel::turnOn() {
 
-    
+    for (byte i = 0; i < 3; i++) {
+
+        // Restore the values saved before turning off
+        target[i] = savedValue[i];
+
+    }
 
 }
 
@@ -26,7 +31,9 @@ void Channels::Channel::turnOff() {
 
     for (byte i = 0; i < 3; i++) {
 
+        // Store the last received value before turning the lights off
         savedValue[i] = value[i];
+        target[i] = 0;
 
     }
 
@@ -97,6 +104,7 @@ bool Lights::processColorData(String args) {
             } else {
 
                 channels.channel[i].turnOff();
+                channels.targetValueReached = false;
                 
             }
             
@@ -126,6 +134,9 @@ bool Lights::processTimerData(String args) {
         // Determine which timer to set
         byte timerNumber = args[1] - 1;
         Serial.println("Timer Number: " + String(timerNumber));
+
+        // Every time a timer is set, reset the elapsed value
+        timers[timerNumber].hasElapsed = false;
 
         // Set the zero point selector
         // Determines which point in time is used as a reference: 0 = timer off; 1 = 12:00; 2 = sunrise; 3 = sunset
@@ -188,9 +199,11 @@ bool Lights::processTimerData(String args) {
 
         int maxVal = (127 * 127) - 1;
 
-        for (byte i = 0; i < 3 * 2; i+= 2) {
+        for (byte i = 0; i < 3; i ++) {
 
-            byte values[2] = {(byte)(args[10 + i] - 1), (byte)(args[10 + i + 1] - 1)};
+            byte pos = i * 2;
+
+            byte values[2] = {(byte)(args[10 + pos] - 1), (byte)(args[10 + pos + 1] - 1)};
             timers[timerNumber].value[i] = combineBytes(values, 2);
 
             // Map the received value to a 16-Bit equivalent
@@ -231,7 +244,7 @@ void Lights::interpolateColors() {
                 channels.channel[i].currentValue[j] = channels.channel[i].value[j] + (factor * (channels.channel[i].target[j] - channels.channel[i].value[j]));
                 output.analogWrite16GC(channels.channel[i].pin[j], channels.channel[i].currentValue[j]);
                 
-                // Serial.println(val);
+                // Serial.println(channels.channel[i].currentValue[j]);
                 
             }
             
@@ -258,15 +271,58 @@ void Lights::interpolateColors() {
 
 void Lights::checkTimers() {
 
+    Serial.println("Actual time: ");
+    Serial.print(Time.hour());
+    Serial.print(":");
+    Serial.print(Time.minute());
+    Serial.print(":");
+    Serial.print(Time.second());
+    Serial.println();
+
     for (byte i = 0; i < timerCount; i++) {
 
-        if (timers[i].hour == Time.hour() && timers[i].minute == Time.minute() && timers[i].second == Time.second()) {
+        Serial.println();
+        Serial.println("Timer " + String(i));
+        Serial.print(timers[i].hour);
+        Serial.print(":");
+        Serial.print(timers[i].minute);
+        Serial.print(":");
+        Serial.print(timers[i].second);
+        Serial.println();
 
-            if (timers[i].mode == 0) {
+        if (timers[i].hour == Time.hour() && timers[i].minute == Time.minute() && timers[i].second == Time.second() && timers[i].enabled && !timers[i].hasElapsed) {
 
-                // (i % 4 == 0)? channels.channel[0].turnOff() : channels.channel[1].turnOff();
+            Serial.println("===================================");
+            Serial.println("Running timer " + String(i));
+
+            byte channelIndex;
+            (i < 4)? channelIndex = 0 : channelIndex = 1;
+
+                // Timer is set up to turn off lights
+            if (timers[i].mode == 0) channels.channel[channelIndex].turnOff();
+
+                // Timer is set up to turn on lights with last stored values
+            if (timers[i].mode == 1) channels.channel[channelIndex].turnOn();
+
+                // Timer is set up to turn on lights to a specific color
+            if(timers[i].mode == 2) {
+
+                for (byte j = 0; j < 3; j++) {
+
+                    Serial.println(timers[i].value[j]);
+
+                    channels.channel[channelIndex].target[j] = timers[i].value[j];
+
+                    Serial.println(channels.channel[channelIndex].target[j]);
+
+                }
 
             }
+
+            channels.interpolationTime = timers[i].interpolationTime;
+            channels.targetValueReached = false;
+            channels.startTime = millis();
+            timers[i].hasElapsed = true;
 
         }
 
