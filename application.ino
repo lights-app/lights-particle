@@ -49,6 +49,9 @@ void setup() {
     // Initialise the Photon's 16-Bit timers
     lights.output.initTimers();
 
+    // Load the lights/timer config from EEPROM
+    lights.loadConfig();
+
 }
 
 void loop() {
@@ -142,6 +145,18 @@ int parseCommand(String args) {
 
         lights.updateSunTimes();
 
+    }
+
+    if (args[0] == 'w') {
+
+        lights.saveConfig();
+
+    }
+
+    if (args[0] == 'l') {
+
+        lights.loadConfig();
+        
     }
     
 

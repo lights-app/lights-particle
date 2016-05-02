@@ -57,6 +57,7 @@ bool Lights::processColorData(String args) {
     if (args.length() == 11 + (channelCount * 3) ){
         Serial.println("Data length checked, parsing data");
         
+        channels.lightsConfig = "";
         channels.lightsConfig = args;
         
         for (byte i = 0; i < channelCount; i++) {
@@ -212,6 +213,9 @@ bool Lights::processTimerData(String args) {
 
         }
 
+        timers[timerNumber].timerConfig = "";
+        timers[timerNumber].timerConfig = args;
+
         return true;
 
     } else {
@@ -252,8 +256,10 @@ void Lights::interpolateColors() {
         
     } else {
 
+        // Color interpolation complete, set targetValueReached to true
         channels.targetValueReached = true;
         
+        // Set channel.value to channel.target
         for (byte i = 0; i < channelCount; i++) {
         // Serial.println("Writing out channel " + String(i));
 
@@ -264,6 +270,9 @@ void Lights::interpolateColors() {
             }
             
         }
+
+        // Save the lights/timer config to EEPROM
+        saveConfig();
         
     }
 
@@ -271,29 +280,29 @@ void Lights::interpolateColors() {
 
 void Lights::checkTimers() {
 
-    Serial.println("Actual time: ");
-    Serial.print(Time.hour());
-    Serial.print(":");
-    Serial.print(Time.minute());
-    Serial.print(":");
-    Serial.print(Time.second());
-    Serial.println();
+    // Serial.println("Actual time: ");
+    // Serial.print(Time.hour());
+    // Serial.print(":");
+    // Serial.print(Time.minute());
+    // Serial.print(":");
+    // Serial.print(Time.second());
+    // Serial.println();
 
     for (byte i = 0; i < timerCount; i++) {
 
-        Serial.println();
-        Serial.println("Timer " + String(i));
-        Serial.print(timers[i].hour);
-        Serial.print(":");
-        Serial.print(timers[i].minute);
-        Serial.print(":");
-        Serial.print(timers[i].second);
-        Serial.println();
+        // Serial.println();
+        // Serial.println("Timer " + String(i));
+        // Serial.print(timers[i].hour);
+        // Serial.print(":");
+        // Serial.print(timers[i].minute);
+        // Serial.print(":");
+        // Serial.print(timers[i].second);
+        // Serial.println();
 
         if (timers[i].hour == Time.hour() && timers[i].minute == Time.minute() && timers[i].second == Time.second() && timers[i].enabled && !timers[i].hasElapsed) {
 
-            Serial.println("===================================");
-            Serial.println("Running timer " + String(i));
+            // Serial.println("===================================");
+            // Serial.println("Running timer " + String(i));
 
             byte channelIndex;
             (i < 4)? channelIndex = 0 : channelIndex = 1;
@@ -309,11 +318,11 @@ void Lights::checkTimers() {
 
                 for (byte j = 0; j < 3; j++) {
 
-                    Serial.println(timers[i].value[j]);
+                    // Serial.println(timers[i].value[j]);
 
                     channels.channel[channelIndex].target[j] = timers[i].value[j];
 
-                    Serial.println(channels.channel[channelIndex].target[j]);
+                    // Serial.println(channels.channel[channelIndex].target[j]);
 
                 }
 
@@ -386,6 +395,107 @@ void Lights::updateSunTimes() {
         Serial.print("Zero Point for sunset: ");
         Serial.print(sunsetZeroPoint);
         Serial.println();
+
+    }
+
+}
+
+void Lights::saveConfig() {
+
+    uint16_t memPos = 0;
+
+    // Write the length of the data we're going to write to memory
+    EEPROM.write(memPos, channels.lightsConfig.length());
+    Serial.println("Writing " + String(channels.lightsConfig.length()) + " bytes to EEPROM");
+    // Increment memory position
+    memPos++;
+
+    for (byte i = 0; i < channels.lightsConfig.length(); i++) {
+
+        EEPROM.write(memPos, channels.lightsConfig[i]);
+        Serial.println("Byte " + String(i) + " " + channels.lightsConfig[i]);
+        // Increment memory position
+        memPos++;
+
+    }
+
+    Serial.println("Lights data saved");
+
+    for (byte i = 0; i < timerCount; i++) {
+
+        Serial.println("Writing " + String(timers[i].timerConfig.length()) + " bytes to EEPROM");
+
+        // Write the length of the data we're going to write to memory
+        EEPROM.write(memPos, timers[i].timerConfig.length());
+        // Increment memory position
+        memPos++;
+
+        for (byte j = 0; j < timers[i].timerConfig.length(); j++) {
+
+            EEPROM.write(memPos, timers[i].timerConfig[j]);
+            Serial.println("Byte " + String(j) + " " + timers[i].timerConfig[j]);
+            // Increment memory position
+            memPos++;
+
+        }
+
+    }
+
+    Serial.println("Timer data saved");
+
+}
+
+void Lights::loadConfig() {
+
+    // Clear any lights configuration currently stored
+    channels.lightsConfig = "";
+
+    uint16_t memPos = 0;
+
+    // Get the amount of bytes we need to read
+    byte bytesToRead = EEPROM.read(memPos);
+    Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM");
+    // Increment memory position
+    memPos++;
+
+    // Read X amount of bytes from EEPROM to load lights config
+    for(byte i = 0; i < bytesToRead; i++) {
+        // Store lights config byte-for-byte
+        channels.lightsConfig += (char)EEPROM.read(memPos);
+        Serial.println("Byte " + String(i) + " " + String(EEPROM.read(memPos)));
+        // Increment memory position
+        memPos++;
+
+    }
+
+    Serial.println("Lights config loaded: " + channels.lightsConfig);
+    processColorData(channels.lightsConfig);
+
+    // For every timer read X amount of bytes from EEPROM to load timer config
+    for (byte i = 0; i < timerCount; i++) {
+
+        // Clear any timer configuration currently stored
+        timers[i].timerConfig = "";
+
+        // Get the amount of bytes we need to read
+        bytesToRead = EEPROM.read(memPos);
+        Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM============================");
+        // Increment memory position
+        memPos++;
+
+        for (byte j = 0; j < bytesToRead; j++) {
+
+            // Store timer config byte-for-byte
+            timers[i].timerConfig += (char)EEPROM.read(memPos);
+            Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
+            // Increment memory position
+            memPos++;
+
+        }
+
+        processTimerData(timers[i].timerConfig);
+
+        Serial.println("Timer " + String(i) + " config loaded: " + timers[i].timerConfig);
 
     }
 

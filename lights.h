@@ -55,7 +55,7 @@ private:
 public:
 
     // Timer configuration in same format as Lights communication protocol. Used to return timer configuration to user
-    String timerConfig;
+    String timerConfig = "";
 
     // Determines if the timer is enabled
     bool enabled;
@@ -127,5 +127,7 @@ public:
     void checkTimers();
     int combineBytes(byte bytes[], byte amountOfBytes);
     void updateSunTimes();
+    void saveConfig();
+    void loadConfig();
 
 };
