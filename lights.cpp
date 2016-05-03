@@ -410,6 +410,12 @@ void Lights::saveConfig() {
     // Increment memory position
     memPos++;
 
+    // Save lights config into Lights.config, timer config will be added after this
+    config = "";
+    config += (char)version;
+    config += (char)channels.lightsConfig.length();
+    config += channels.lightsConfig;
+
     for (byte i = 0; i < channels.lightsConfig.length(); i++) {
 
         EEPROM.write(memPos, channels.lightsConfig[i]);
@@ -422,6 +428,10 @@ void Lights::saveConfig() {
     Serial.println("Lights data saved");
 
     for (byte i = 0; i < timerCount; i++) {
+
+        // For each timer, store the config in Lights.config
+        config += (char)timers[i].timerConfig.length();
+        config += timers[i].timerConfig;
 
         Serial.println("Writing " + String(timers[i].timerConfig.length()) + " bytes to EEPROM");
 
@@ -442,6 +452,9 @@ void Lights::saveConfig() {
     }
 
     Serial.println("Timer data saved");
+
+    Serial.println("Lights.config updated");
+    Serial.println(config);
 
 }
 
@@ -471,6 +484,12 @@ void Lights::loadConfig() {
     Serial.println("Lights config loaded: " + channels.lightsConfig);
     processColorData(channels.lightsConfig);
 
+    // Load lights config into Lights.config, timer config will be added after this
+    config = "";
+    config += (char)version;
+    config += (char)bytesToRead;
+    config += channels.lightsConfig;
+
     // For every timer read X amount of bytes from EEPROM to load timer config
     for (byte i = 0; i < timerCount; i++) {
 
@@ -480,6 +499,7 @@ void Lights::loadConfig() {
         // Get the amount of bytes we need to read
         bytesToRead = EEPROM.read(memPos);
         Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM============================");
+
         // Increment memory position
         memPos++;
 
@@ -488,6 +508,7 @@ void Lights::loadConfig() {
             // Store timer config byte-for-byte
             timers[i].timerConfig += (char)EEPROM.read(memPos);
             Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
+
             // Increment memory position
             memPos++;
 
@@ -497,6 +518,12 @@ void Lights::loadConfig() {
 
         Serial.println("Timer " + String(i) + " config loaded: " + timers[i].timerConfig);
 
+        // For each timer, store the config in Lights.config
+        config += (char)bytesToRead;
+        config += timers[i].timerConfig;
+
     }
+
+    Serial.println("Lights.config loaded");
 
 }

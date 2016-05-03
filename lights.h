@@ -109,9 +109,9 @@ public:
     LightsTimer timers[timerCount];
     PhotonPWM output;
     TimeLord timeLord;
+    String config;
+    byte version;
 
-    double longitude;
-    double latitude;
     byte today[6];
     byte sunriseHour;
     byte sunriseMinute;

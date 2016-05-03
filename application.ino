@@ -19,10 +19,11 @@ unsigned long lastSyncTime = millis();
 
 void setup() {
 
+    // Call WiFi.on() to ensure WiFi is turned on
     WiFi.on();
 
     Particle.function("lights", parseCommand);
-    Particle.variable("lightsConfig", lights.channels.lightsConfig);
+    Particle.variable("config", lights.config);
     Serial.begin(9600);
 
     // Check for daylight savings time
@@ -31,12 +32,12 @@ void setup() {
     // Request time synchronization from the Particle Cloud
     Particle.syncTime();
 
-    lights.longitude = 4.3571;
-    lights.latitude = 52.0116;
+    // Set lights version, must be higher than 1 to prevent null termination issues with Strings
+    lights.version = 1;
 
     // Set timezone for timeLord (in minutes).
     lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
-    lights.timeLord.Position(lights.latitude, lights.longitude);
+    lights.timeLord.Position(52.0116, 4.3571);
     lights.updateSunTimes();
 
     lights.today[0] = 0;
@@ -77,6 +78,8 @@ void loop() {
     // Execute things every second
     if (millis() % 1000 == 0) {
         lights.checkTimers();
+
+        Serial.println("Wifi strength: " + String(WiFi.RSSI()));
 
         // Serial.print(Time.hour());
         // Serial.print(":");
