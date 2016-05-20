@@ -28,6 +28,21 @@ void setup() {
     // Call WiFi.on() to ensure WiFi is turned on
     WiFi.on();
 
+    // Check Wi-Fi signal strength
+    if (WiFi.RSSI() < -60) {
+
+        // If it is low, select the external antenna to check its reception
+        WiFi.selectAntenna(ANT_EXTERNAL);
+
+        // If it is also low, set antenna to auto and let it dynamically switch between them
+        if (WiFi.RSSI() < -60) {
+
+            WiFi.selectAntenna(ANT_AUTO);
+
+        }
+
+    }
+
     Particle.function("lights", parseCommand);
     Particle.variable("config", lights.config);
     Serial.begin(9600);
