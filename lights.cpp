@@ -48,21 +48,28 @@ Lights::Lights() {
 
 bool Lights::processColorData(String args) {
 
-	Serial.println("Parsing color data");
-    Serial.println("Data length: " + String(args.length()));
+    #ifdef LIGHTS_DEBUG
+    	Serial.println("Parsing color data");
+        Serial.println("Data length: " + String(args.length()));
+    #endif
     
     // Serial.println(temp[16]);
     
     // If the length is not what we expect it to be, then the message is malformed. Return false.
     if (args.length() == 11 + (channelCount * 3) ){
-        Serial.println("Data length checked, parsing data");
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Data length checked, parsing data");
+        #endif
         
         channels.lightsConfig = "";
         channels.lightsConfig = args;
         
         for (byte i = 0; i < channelCount; i++) {
 
-            Serial.print("Color channel " + String(i) +  ": ");
+            #ifdef LIGHTS_DEBUG
+                Serial.print("Color channel " + String(i) +  ": ");
+            #endif
             
             if (bitRead(args[1], i) == 1 ){
 
@@ -94,8 +101,10 @@ bool Lights::processColorData(String args) {
                     
                     // Map the received value to a 16-Bit equivalent
                     val = map(val, 0, maxVal, 0, 65535);
-                    
-                    Serial.print(String(val) + ", ");
+
+                    #ifdef LIGHTS_DEBUG
+                        Serial.print(String(val) + ", ");
+                    #endif
                     
                     channels.channel[i].target[j] = val;
                     // Serial.println(channels.channel[i].target[j]);
@@ -111,7 +120,9 @@ bool Lights::processColorData(String args) {
             
         }
         
-        Serial.println("Interpolation time: " + String(channels.interpolationTime));
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Interpolation time: " + String(channels.interpolationTime));
+        #endif
         
         channels.targetValueReached = false;
         channels.startTime = millis();
@@ -130,11 +141,16 @@ bool Lights::processTimerData(String args) {
 
     if (args.length() == 16) {
 
-        Serial.println("Timer data length checked");
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer data length checked");
+        #endif
 
         // Determine which timer to set
         byte timerNumber = args[1] - 1;
-        Serial.println("Timer Number: " + String(timerNumber));
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer Number: " + String(timerNumber));
+        #endif
 
         // Every time a timer is set, reset the elapsed value
         timers[timerNumber].hasElapsed = false;
@@ -142,15 +158,25 @@ bool Lights::processTimerData(String args) {
         // Set the zero point selector
         // Determines which point in time is used as a reference: 0 = timer off; 1 = 12:00; 2 = sunrise; 3 = sunset
         timers[timerNumber].zeroPointSelector = args[2] - 1;
-        Serial.println("Zero point selector: " + String(timers[timerNumber].zeroPointSelector));
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Zero point selector: " + String(timers[timerNumber].zeroPointSelector));
+        #endif
 
         // If the zero point selector is 0, the timer should be disabled
-        (args[2] == 0)? timers[timerNumber].enabled = false : timers[timerNumber].enabled = true;
+        (timers[timerNumber].zeroPointSelector == 0)? timers[timerNumber].enabled = false : timers[timerNumber].enabled = true;
+        
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer enabled: " + String(timers[timerNumber].enabled));
+        #endif
 
         // Set the zero point offset by combining the next 3 bytes. Subtract 43.199 to get the correct (possibly negative) value
         byte values[3] = {args[3] - 1, args[4] - 1, args[5] - 1};
         timers[timerNumber].zeroPointOffset = (combineBytes(values, 3) - 43199);
-        Serial.println("Zero point offset: " + String(timers[timerNumber].zeroPointOffset));
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Zero point offset: " + String(timers[timerNumber].zeroPointOffset));
+        #endif
 
         int value = 0;
 
@@ -176,27 +202,38 @@ bool Lights::processTimerData(String args) {
 
         if (timers[timerNumber].enabled) {
 
-            Serial.println("This timer will run at: ");
-            Serial.print(timers[timerNumber].hour);
-            Serial.print(":");
-            Serial.print(timers[timerNumber].minute);
-            Serial.print(":");
-            Serial.print(timers[timerNumber].second);
+            #ifdef LIGHTS_DEBUG
+                Serial.println("This timer will run at: ");
+                Serial.print(timers[timerNumber].hour);
+                Serial.print(":");
+                Serial.print(timers[timerNumber].minute);
+                Serial.print(":");
+                Serial.print(timers[timerNumber].second);
+                Serial.println();
+            #endif
 
         } else {
 
-            Serial.println("The timer has been disabled");
+            #ifdef LIGHTS_DEBUG
+                Serial.println("The timer has been disabled");
+            #endif
 
         }
 
         // Set the interpolation time. Multiply the value by 100 to convert to milliseconds
         byte values2[3] = {args[6] - 1, args[7] - 1, args[8] - 1};
         timers[timerNumber].interpolationTime = combineBytes(values2, 3) * 100;
-        Serial.println("Timer interpolation time: " + String(timers[timerNumber].interpolationTime));
+        
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer interpolation time: " + String(timers[timerNumber].interpolationTime));
+        #endif
 
         // Set the mode.
         timers[timerNumber].mode = args[9] - 1;
-        Serial.println("Timer mode: " + String(timers[timerNumber].mode));
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer mode: " + String(timers[timerNumber].mode));
+        #endif
 
         int maxVal = (127 * 127) - 1;
 
@@ -209,7 +246,10 @@ bool Lights::processTimerData(String args) {
 
             // Map the received value to a 16-Bit equivalent
             timers[timerNumber].value[i] = map(timers[timerNumber].value[i], 0, maxVal, 0, 65535);
-            Serial.println("Color value: " + String(timers[timerNumber].value[i]));
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Color value: " + String(timers[timerNumber].value[i]));
+            #endif
 
         }
 
@@ -220,7 +260,9 @@ bool Lights::processTimerData(String args) {
 
     } else {
 
-        Serial.println("Timer data length incorrect");
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer data length incorrect");
+        #endif
 
         return false;
 
@@ -356,7 +398,9 @@ int Lights::combineBytes(byte bytes[], byte amountOfBytes) {
 
 void Lights::updateSunTimes() {
 
-    Serial.println("Setting sun times");
+    #ifdef LIGHTS_DEBUG
+        Serial.println("Setting sun times");
+    #endif
 
     if (timeLord.SunRise(today)) {
 
@@ -366,15 +410,17 @@ void Lights::updateSunTimes() {
                 // Calculate and set the zero point for the sunrise. Helps in timer configurations
         sunriseZeroPoint = (sunriseHour * 3600) + (sunriseMinute * 60);
 
-        Serial.println();
-        Serial.print("Sunrise will be at: ");
-        Serial.print(sunriseHour);
-        Serial.print(":");
-        Serial.print(sunriseMinute);
-        Serial.println();
-        Serial.print("Zero Point for sunrise: ");
-        Serial.print(sunriseZeroPoint);
-        Serial.println();
+        #ifdef LIGHTS_DEBUG
+            Serial.println();
+            Serial.print("Sunrise will be at: ");
+            Serial.print(sunriseHour);
+            Serial.print(":");
+            Serial.print(sunriseMinute);
+            Serial.println();
+            Serial.print("Zero Point for sunrise: ");
+            Serial.print(sunriseZeroPoint);
+            Serial.println();
+        #endif
 
     }
 
@@ -386,15 +432,17 @@ void Lights::updateSunTimes() {
                 // Calculate and set the zero point for the sunrise. Helps in timer configurations
         sunsetZeroPoint = (sunsetHour * 3600) + (sunsetMinute * 60);
 
-        Serial.println();
-        Serial.print("Sunset will be at: ");
-        Serial.print(sunsetHour);
-        Serial.print(":");
-        Serial.print(sunsetMinute);
-        Serial.println();
-        Serial.print("Zero Point for sunset: ");
-        Serial.print(sunsetZeroPoint);
-        Serial.println();
+        #ifdef LIGHTS_DEBUG
+            Serial.println();
+            Serial.print("Sunset will be at: ");
+            Serial.print(sunsetHour);
+            Serial.print(":");
+            Serial.print(sunsetMinute);
+            Serial.println();
+            Serial.print("Zero Point for sunset: ");
+            Serial.print(sunsetZeroPoint);
+            Serial.println();
+        #endif
 
     }
 
@@ -406,7 +454,11 @@ void Lights::saveConfig() {
 
     // Write the length of the data we're going to write to memory
     EEPROM.write(memPos, channels.lightsConfig.length());
-    Serial.println("Writing " + String(channels.lightsConfig.length()) + " bytes to EEPROM");
+
+    #ifdef LIGHTS_DEBUG
+        Serial.println("Writing " + String(channels.lightsConfig.length()) + " bytes to EEPROM");
+    #endif
+
     // Increment memory position
     memPos++;
 
@@ -419,13 +471,18 @@ void Lights::saveConfig() {
     for (byte i = 0; i < channels.lightsConfig.length(); i++) {
 
         EEPROM.write(memPos, channels.lightsConfig[i]);
-        Serial.println("Byte " + String(i) + " " + channels.lightsConfig[i]);
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Byte " + String(i) + " " + channels.lightsConfig[i]);
+        #endif
+
         // Increment memory position
         memPos++;
 
     }
 
-    Serial.println("Lights data saved");
+    #ifdef LIGHTS_DEBUG
+        Serial.println("Lights data saved");
+    #endif
 
     for (byte i = 0; i < timerCount; i++) {
 
@@ -433,7 +490,9 @@ void Lights::saveConfig() {
         config += (char)timers[i].timerConfig.length();
         config += timers[i].timerConfig;
 
-        Serial.println("Writing " + String(timers[i].timerConfig.length()) + " bytes to EEPROM");
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Writing " + String(timers[i].timerConfig.length()) + " bytes to EEPROM");
+        #endif
 
         // Write the length of the data we're going to write to memory
         EEPROM.write(memPos, timers[i].timerConfig.length());
@@ -443,7 +502,10 @@ void Lights::saveConfig() {
         for (byte j = 0; j < timers[i].timerConfig.length(); j++) {
 
             EEPROM.write(memPos, timers[i].timerConfig[j]);
-            Serial.println("Byte " + String(j) + " " + timers[i].timerConfig[j]);
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Byte " + String(j) + " " + timers[i].timerConfig[j]);
+            #endif
+
             // Increment memory position
             memPos++;
 
@@ -451,10 +513,12 @@ void Lights::saveConfig() {
 
     }
 
-    Serial.println("Timer data saved");
+    #ifdef LIGHTS_DEBUG
+        Serial.println("Timer data saved");
 
-    Serial.println("Lights.config updated");
-    Serial.println(config);
+        Serial.println("Lights.config updated");
+        Serial.println(config);
+    #endif
 
 }
 
@@ -467,7 +531,10 @@ void Lights::loadConfig() {
 
     // Get the amount of bytes we need to read
     byte bytesToRead = EEPROM.read(memPos);
-    Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM");
+    #ifdef LIGHTS_DEBUG
+        Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM");
+    #endif
+
     // Increment memory position
     memPos++;
 
@@ -475,13 +542,19 @@ void Lights::loadConfig() {
     for(byte i = 0; i < bytesToRead; i++) {
         // Store lights config byte-for-byte
         channels.lightsConfig += (char)EEPROM.read(memPos);
-        Serial.println("Byte " + String(i) + " " + String(EEPROM.read(memPos)));
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Byte " + String(i) + " " + String(EEPROM.read(memPos)));
+        #endif
+
         // Increment memory position
         memPos++;
 
     }
 
-    Serial.println("Lights config loaded: " + channels.lightsConfig);
+    #ifdef LIGHTS_DEBUG
+        Serial.println("Lights config loaded: " + channels.lightsConfig);
+    #endif
+
     processColorData(channels.lightsConfig);
 
     // Load lights config into Lights.config, timer config will be added after this
@@ -498,7 +571,9 @@ void Lights::loadConfig() {
 
         // Get the amount of bytes we need to read
         bytesToRead = EEPROM.read(memPos);
-        Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM============================");
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM============================");
+        #endif
 
         // Increment memory position
         memPos++;
@@ -507,7 +582,9 @@ void Lights::loadConfig() {
 
             // Store timer config byte-for-byte
             timers[i].timerConfig += (char)EEPROM.read(memPos);
-            Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
+            #endif
 
             // Increment memory position
             memPos++;
@@ -516,7 +593,9 @@ void Lights::loadConfig() {
 
         processTimerData(timers[i].timerConfig);
 
-        Serial.println("Timer " + String(i) + " config loaded: " + timers[i].timerConfig);
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer " + String(i) + " config loaded: " + timers[i].timerConfig);
+        #endif
 
         // For each timer, store the config in Lights.config
         config += (char)bytesToRead;

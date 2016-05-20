@@ -1,5 +1,11 @@
+#define LIGHTS_DEBUG
+
 // Enable system threading to ensure main loop continues regardless of cloud connection
-SYSTEM_THREAD(ENABLED);
+// Disable system threading for debugging. Threading enabled messes with Serial printing
+#ifndef LIGHTS_DEBUG
+    SYSTEM_THREAD(ENABLED);
+#endif
+
 // Set system mode to automatic to ensure Wifi will work automatically
 SYSTEM_MODE(AUTOMATIC);
 
@@ -77,16 +83,21 @@ void loop() {
 
     // Execute things every second
     if (millis() % 1000 == 0) {
+        
         lights.checkTimers();
 
-        Serial.println("Wifi strength: " + String(WiFi.RSSI()));
+        #ifdef LIGHTS_DEBUG
 
-        // Serial.print(Time.hour());
-        // Serial.print(":");
-        // Serial.print(Time.minute());
-        // Serial.print(":");
-        // Serial.print(Time.second());
-        // Serial.println();
+            Serial.println("Wifi strength: " + String(WiFi.RSSI()));
+
+            Serial.print(Time.hour());
+            Serial.print(":");
+            Serial.print(Time.minute());
+            Serial.print(":");
+            Serial.print(Time.second());
+            Serial.println();
+
+        #endif
 
         // Execute things once a day at midnight
         if (Time.hour() == 0 && Time.minute() == 0 && Time.second() == 0) {
@@ -112,7 +123,9 @@ int parseCommand(String args) {
     
     if (args[0] == 'c') {
 
-        Serial.println("Received color data");
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Received color data");
+        #endif
         
         
         if (lights.processColorData(args)) {
@@ -130,7 +143,9 @@ int parseCommand(String args) {
     
     if (args[0] == 't') {
 
-        Serial.println("Received timer data");
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Received timer data");
+        #endif
         
         if (lights.processTimerData(args)) {
 
