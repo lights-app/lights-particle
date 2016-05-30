@@ -468,6 +468,8 @@ void Lights::saveConfig() {
     config += (char)versionMinor;
     config += (char)versionPatch;
 
+    config += channelCount;
+
     config += (char)channels.lightsConfig.length();
     config += channels.lightsConfig;
 
