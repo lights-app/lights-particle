@@ -464,7 +464,10 @@ void Lights::saveConfig() {
 
     // Save lights config into Lights.config, timer config will be added after this
     config = "";
-    config += (char)version;
+    config += (char)versionMajor;
+    config += (char)versionMinor;
+    config += (char)versionPatch;
+
     config += (char)channels.lightsConfig.length();
     config += channels.lightsConfig;
 
@@ -559,7 +562,10 @@ void Lights::loadConfig() {
 
     // Load lights config into Lights.config, timer config will be added after this
     config = "";
-    config += (char)version;
+    config += (char)versionMajor;
+    config += (char)versionMinor;
+    config += (char)versionPatch;
+
     config += (char)bytesToRead;
     config += channels.lightsConfig;
 

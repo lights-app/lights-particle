@@ -54,7 +54,9 @@ void setup() {
     Particle.syncTime();
 
     // Set lights version, must be higher than 1 to prevent null termination issues with Strings
-    lights.version = 1;
+    lights.versionMajor = 1;
+    lights.versionMinor = 1;
+    lights.versionPatch = 1;
 
     // Set timezone for timeLord (in minutes).
     lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);

@@ -110,7 +110,9 @@ public:
     PhotonPWM output;
     TimeLord timeLord;
     String config;
-    byte version;
+    byte versionMajor;
+    byte versionMinor;
+    byte versionPatch;
 
     byte today[6];
     byte sunriseHour;
