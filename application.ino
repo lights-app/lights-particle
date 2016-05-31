@@ -147,6 +147,9 @@ int parseCommand(String args) {
         
         if (lights.processColorData(args)) {
 
+            // Publish change event to the cloud
+            Particle.publish("configChanged", lights.config, 1);
+
             return 200;
             
         } else {
@@ -165,6 +168,9 @@ int parseCommand(String args) {
         #endif
         
         if (lights.processTimerData(args)) {
+
+            // Publish change event to the cloud
+            Particle.publish("configChanged", lights.config, 1);
 
             return 200;
             
