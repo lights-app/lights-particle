@@ -464,11 +464,13 @@ void Lights::saveConfig() {
 
     // Save lights config into Lights.config, timer config will be added after this
     config = "";
-    config += (char)versionMajor;
-    config += (char)versionMinor;
-    config += (char)versionPatch;
+    // Save version, must be higher than 1 to prevent null termination issues with Strings
+    config += (char)(versionMajor + 1);
+    config += (char)(versionMinor + 1);
+    config += (char)(versionPatch + 1);
 
-    config += channelCount;
+    // Save channelCount, must be higher than 1 to prevent null termination issues with Strings
+    config += (char)(channelCount + 1);
 
     config += (char)channels.lightsConfig.length();
     config += channels.lightsConfig;

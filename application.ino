@@ -53,10 +53,10 @@ void setup() {
     // Request time synchronization from the Particle Cloud
     Particle.syncTime();
 
-    // Set lights version, must be higher than 1 to prevent null termination issues with Strings
-    lights.versionMajor = 1;
-    lights.versionMinor = 1;
-    lights.versionPatch = 1;
+    // Set lights version. Can't be higher than 126 (1 will be automatically added)
+    lights.versionMajor = 0;
+    lights.versionMinor = 0;
+    lights.versionPatch = 0;
 
     // Set timezone for timeLord (in minutes).
     lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
