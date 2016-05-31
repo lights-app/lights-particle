@@ -1,4 +1,5 @@
 #define LIGHTS_DEBUG
+// #define LIGHTS_DETAILS
 
 // Enable system threading to ensure main loop continues regardless of cloud connection
 // Disable system threading for debugging. Threading enabled messes with Serial printing
@@ -27,21 +28,21 @@ void setup() {
 
     // Call WiFi.on() to ensure WiFi is turned on
     WiFi.on();
-
+    
     // Check Wi-Fi signal strength
-    if (WiFi.RSSI() < -60) {
+    // if (WiFi.RSSI() < -60) {
 
-        // If it is low, select the external antenna to check its reception
-        WiFi.selectAntenna(ANT_EXTERNAL);
+    //     // If it is low, select the external antenna to check its reception
+    //     WiFi.selectAntenna(ANT_EXTERNAL);
 
-        // If it is also low, set antenna to auto and let it dynamically switch between them
-        if (WiFi.RSSI() < -60) {
+    //     // If it is also low, set antenna to auto and let it dynamically switch between them
+    //     if (WiFi.RSSI() < -60) {
 
-            WiFi.selectAntenna(ANT_AUTO);
+    //         WiFi.selectAntenna(ANT_AUTO);
 
-        }
+    //     }
 
-    }
+    // }
 
     Particle.function("lights", parseCommand);
     Particle.variable("config", lights.config);
@@ -103,7 +104,7 @@ void loop() {
         
         lights.checkTimers();
 
-        #ifdef LIGHTS_DEBUG
+        #ifdef LIGHTS_DETAILS
 
             Serial.println("Wifi strength: " + String(WiFi.RSSI()));
 
@@ -144,11 +145,7 @@ int parseCommand(String args) {
             Serial.println("Received color data");
         #endif
         
-        
         if (lights.processColorData(args)) {
-
-            // Publish change event to the cloud
-            Particle.publish("configChanged", lights.config, 1);
 
             return 200;
             
@@ -167,10 +164,7 @@ int parseCommand(String args) {
             Serial.println("Received timer data");
         #endif
         
-        if (lights.processTimerData(args)) {
-
-            // Publish change event to the cloud
-            Particle.publish("configChanged", lights.config, 1);
+        if (lights.processTimerData(args, true)) {
 
             return 200;
             
@@ -197,6 +191,13 @@ int parseCommand(String args) {
     if (args[0] == 'l') {
 
         lights.loadConfig();
+        
+    }
+
+    // Reset a specific timer
+    if (args[0] == 'r') {
+
+        lights.resetTimer(args[1] - 1);
         
     }
     

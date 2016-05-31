@@ -2,6 +2,8 @@
 #include "PhotonPWM.h"
 #include "math.h"
 
+#define LIGHTS_DEBUG
+
 Channels::Channel::Channel(byte r, byte g, byte b) {
 
     pin[0] = r;
@@ -137,7 +139,7 @@ bool Lights::processColorData(String args) {
 
 }
 
-bool Lights::processTimerData(String args) {
+bool Lights::processTimerData(String args, bool saveAfterProcessing) {
 
     if (args.length() == 16) {
 
@@ -147,6 +149,17 @@ bool Lights::processTimerData(String args) {
 
         // Determine which timer to set
         byte timerNumber = args[1] - 1;
+
+        // If the timer number is out of range, return false
+        if (timerNumber >= timerCount) {
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Timer Number: " + String(timerNumber) + " out of range");
+            #endif
+
+            return false;
+
+        }
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Timer Number: " + String(timerNumber));
@@ -158,6 +171,17 @@ bool Lights::processTimerData(String args) {
         // Set the zero point selector
         // Determines which point in time is used as a reference: 0 = timer off; 1 = 12:00; 2 = sunrise; 3 = sunset
         timers[timerNumber].zeroPointSelector = args[2] - 1;
+
+        // If the zero point selector is out of range, return false
+        if (timers[timerNumber].zeroPointSelector > 3) {
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("zeroPointSelector: " + String(timers[timerNumber].zeroPointSelector) + " out of range");
+            #endif
+
+            return false;
+
+        }
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Zero point selector: " + String(timers[timerNumber].zeroPointSelector));
@@ -231,6 +255,17 @@ bool Lights::processTimerData(String args) {
         // Set the mode.
         timers[timerNumber].mode = args[9] - 1;
 
+        // If the mode is out of range, return false
+        if (timers[timerNumber].mode > 2) {
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("mode: " + String(timers[timerNumber].mode) + " out of range");
+            #endif
+
+            return false;
+
+        }
+
         #ifdef LIGHTS_DEBUG
             Serial.println("Timer mode: " + String(timers[timerNumber].mode));
         #endif
@@ -255,6 +290,16 @@ bool Lights::processTimerData(String args) {
 
         timers[timerNumber].timerConfig = "";
         timers[timerNumber].timerConfig = args;
+
+        if (saveAfterProcessing) {
+
+            // Save the lights/timer config to EEPROM
+            saveConfig();
+
+        }
+
+        // Publish change event to the cloud after the new config has been saved
+        Particle.publish("configChanged", config, 1);
 
         return true;
 
@@ -315,6 +360,9 @@ void Lights::interpolateColors() {
 
         // Save the lights/timer config to EEPROM
         saveConfig();
+
+        // Publish change event to the cloud after the new config has been saved
+        Particle.publish("configChanged", config, 1);
         
     }
 
@@ -377,6 +425,30 @@ void Lights::checkTimers() {
 
         }
 
+    }
+
+}
+
+void Lights::resetTimer(byte timerNumber) {
+
+    if(timerNumber < timerCount){
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Resetting timer " + String(timerNumber));
+        #endif
+
+        timers[timerNumber].timerConfig = "t";
+        timers[timerNumber].timerConfig += (char)timerNumber;
+
+        for (byte j = 0; j < 14; j++) {
+            timers[timerNumber].timerConfig += (char)1;
+        }
+
+    } else {
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Can't reset timer" + String(timerNumber) + ". Out of bounds");
+        #endif
     }
 
 }
@@ -585,23 +657,45 @@ void Lights::loadConfig() {
             Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM============================");
         #endif
 
-        // Increment memory position
-        memPos++;
+        // Check data length. If it is lower than 16, the timer has not been configured yet
+        // Load a 0 (1, since we subtract 1 later) config into timerConfig
+        if (bytesToRead < 16) {
 
-        for (byte j = 0; j < bytesToRead; j++) {
-
-            // Store timer config byte-for-byte
-            timers[i].timerConfig += (char)EEPROM.read(memPos);
             #ifdef LIGHTS_DEBUG
-                Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
+                Serial.println(String(bytesToRead) + " length incorrect, resetting timer to 0 config");
             #endif
+
+                resetTimer(i);
+
+        } else {
 
             // Increment memory position
             memPos++;
 
+            for (byte j = 0; j < bytesToRead; j++) {
+
+                // Store timer config byte-for-byte
+                timers[i].timerConfig += (char)EEPROM.read(memPos);
+                #ifdef LIGHTS_DEBUG
+                    Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
+                #endif
+
+                // Increment memory position
+                memPos++;
+
+            }
         }
 
-        processTimerData(timers[i].timerConfig);
+        // If the timer processor returns false, reset the timer to a 0 config
+        if (!processTimerData(timers[i].timerConfig, false)) {
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Error processing timer, resetting to 0 config");
+            #endif
+
+            resetTimer(i);
+
+        }
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Timer " + String(i) + " config loaded: " + timers[i].timerConfig);
@@ -614,5 +708,6 @@ void Lights::loadConfig() {
     }
 
     Serial.println("Lights.config loaded");
+    saveConfig();
 
 }

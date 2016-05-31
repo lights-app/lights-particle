@@ -124,9 +124,10 @@ public:
 
     // Functions
     bool processColorData(String args);
-    bool processTimerData(String args);
+    bool processTimerData(String args, bool saveAfterProcessing);
     void interpolateColors();
     void checkTimers();
+    void resetTimer(byte timerNumber);
     int combineBytes(byte bytes[], byte amountOfBytes);
     void updateSunTimes();
     void saveConfig();
