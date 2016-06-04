@@ -127,10 +127,11 @@ public:
     bool processTimerData(String args, bool saveAfterProcessing);
     void interpolateColors();
     void checkTimers();
+    void resetLights();
     void resetTimer(byte timerNumber);
     int combineBytes(byte bytes[], byte amountOfBytes);
     void updateSunTimes();
-    void saveConfig();
+    void saveConfig(bool writeToEEPROM = true);
     void loadConfig();
 
 };

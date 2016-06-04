@@ -139,10 +139,11 @@ int parseCommand(String args) {
 
     Serial.println(args);
     
-    if (args[0] == 'c') {
+    if (args[0] - 1 == 'c') {
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Received color data");
+            Serial.println(lights.channels.targetValueReached);
         #endif
         
         if (lights.processColorData(args)) {
@@ -158,7 +159,7 @@ int parseCommand(String args) {
         
     }
     
-    if (args[0] == 't') {
+    if (args[0] - 1 == 't') {
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Received timer data");
@@ -176,28 +177,56 @@ int parseCommand(String args) {
         
     }
 
-    if (args[0] == 's') {
+    if (args[0] - 1 == 's') {
 
         lights.updateSunTimes();
 
     }
 
-    if (args[0] == 'w') {
+    if (args[0] - 1 == 'w') {
 
         lights.saveConfig();
 
     }
 
-    if (args[0] == 'l') {
+    if (args[0] - 1 == 'l') {
 
         lights.loadConfig();
         
     }
 
     // Reset a specific timer
-    if (args[0] == 'r') {
+    if (args[0] - 1 == 'r') {
 
         lights.resetTimer(args[1] - 1);
+        
+    }
+
+    // Reset the whole memory
+    if (args[0] - 1 == 'z') {
+
+        Serial.println("Resetting memory");
+
+        for (uint16_t i = 0; i < EEPROM.length(); i++) {
+
+            EEPROM.write(i, 1);
+
+        }
+
+        lights.resetLights();
+
+        for (byte i = 0; i < lights.timerCount; i++) {
+
+            lights.resetTimer(i);
+            // Process the reset timer data. 
+            // It does not need to be saved since we already stored the reset data in EEPROM when we reset the timer
+            lights.processTimerData(lights.timers[i].timerConfig, false);
+
+        }
+
+        lights.saveConfig();
+
+        Serial.println("Memory reset complete");
         
     }
     

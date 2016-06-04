@@ -62,7 +62,23 @@ bool Lights::processColorData(String args) {
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Data length checked, parsing data");
+            Serial.println(channels.targetValueReached);
         #endif
+
+        if (!channels.targetValueReached) {
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("New data received before end of transition, publishing previous data");
+            #endif
+
+            // We save the config, but do not write to EEPROM since we're getting new data
+            saveConfig(false);
+
+            // publish change event if new data was received before the target value of the previous transition was reached
+            // This keeps all connected users up to date with the latest color information
+            Particle.publish("configChanged", config, 1);
+
+        }
         
         channels.lightsConfig = "";
         channels.lightsConfig = args;
@@ -298,6 +314,10 @@ bool Lights::processTimerData(String args, bool saveAfterProcessing) {
 
         }
 
+        #ifdef LIGHTS_DEBUG
+            Serial.println("New timer data saved, publishing latest data");
+        #endif
+
         // Publish change event to the cloud after the new config has been saved
         Particle.publish("configChanged", config, 1);
 
@@ -342,9 +362,6 @@ void Lights::interpolateColors() {
         }
         
     } else {
-
-        // Color interpolation complete, set targetValueReached to true
-        channels.targetValueReached = true;
         
         // Set channel.value to channel.target
         for (byte i = 0; i < channelCount; i++) {
@@ -360,6 +377,13 @@ void Lights::interpolateColors() {
 
         // Save the lights/timer config to EEPROM
         saveConfig();
+
+        // Color interpolation complete, set targetValueReached to true
+        channels.targetValueReached = true;
+
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Target value reached, publishing latest color data");
+        #endif
 
         // Publish change event to the cloud after the new config has been saved
         Particle.publish("configChanged", config, 1);
@@ -429,6 +453,13 @@ void Lights::checkTimers() {
 
 }
 
+void Lights::resetLights() {
+
+    // Lights off, 700 ms interpolation time
+    channels.lightsConfig = "d";
+
+}
+
 void Lights::resetTimer(byte timerNumber) {
 
     if(timerNumber < timerCount){
@@ -437,12 +468,20 @@ void Lights::resetTimer(byte timerNumber) {
             Serial.println("Resetting timer " + String(timerNumber));
         #endif
 
-        timers[timerNumber].timerConfig = "t";
-        timers[timerNumber].timerConfig += (char)timerNumber;
+        // Add one to the letter t
+        timers[timerNumber].timerConfig = (char)('t' + 1);
+        timers[timerNumber].timerConfig += (char)(timerNumber + 1);
+        timers[timerNumber].timerConfig += "3";
 
-        for (byte j = 0; j < 14; j++) {
-            timers[timerNumber].timerConfig += (char)1;
-        }
+        #ifdef LIGHTS_DEBUG
+            Serial.println("Timer length: " + String(timers[timerNumber].timerConfig.length()));
+        #endif
+
+        // for (byte j = 0; j < 14; j++) {
+        //     timers[timerNumber].timerConfig += (char)1;
+        // }
+
+        saveConfig();
 
     } else {
 
@@ -520,12 +559,10 @@ void Lights::updateSunTimes() {
 
 }
 
-void Lights::saveConfig() {
+// writeToEEPROM is set to true as default
+void Lights::saveConfig(bool writeToEEPROM) {
 
     uint16_t memPos = 0;
-
-    // Write the length of the data we're going to write to memory
-    EEPROM.write(memPos, channels.lightsConfig.length());
 
     #ifdef LIGHTS_DEBUG
         Serial.println("Writing " + String(channels.lightsConfig.length()) + " bytes to EEPROM");
@@ -544,59 +581,41 @@ void Lights::saveConfig() {
     // Save channelCount, must be higher than 1 to prevent null termination issues with Strings
     config += (char)(channelCount + 1);
 
-    config += (char)channels.lightsConfig.length();
+    config += (char)(channels.lightsConfig.length() + 1);
+
+    // The lightsConfig already has +1 for each byte, so we can just store it directly
     config += channels.lightsConfig;
 
-    for (byte i = 0; i < channels.lightsConfig.length(); i++) {
-
-        EEPROM.write(memPos, channels.lightsConfig[i]);
-        #ifdef LIGHTS_DEBUG
-            Serial.println("Byte " + String(i) + " " + channels.lightsConfig[i]);
-        #endif
-
-        // Increment memory position
-        memPos++;
-
-    }
-
     #ifdef LIGHTS_DEBUG
-        Serial.println("Lights data saved");
+        Serial.println();
     #endif
 
     for (byte i = 0; i < timerCount; i++) {
-
-        // For each timer, store the config in Lights.config
-        config += (char)timers[i].timerConfig.length();
-        config += timers[i].timerConfig;
 
         #ifdef LIGHTS_DEBUG
             Serial.println("Writing " + String(timers[i].timerConfig.length()) + " bytes to EEPROM");
         #endif
 
-        // Write the length of the data we're going to write to memory
-        EEPROM.write(memPos, timers[i].timerConfig.length());
-        // Increment memory position
-        memPos++;
+        // For each timer, store the config in Lights.config
+        config += (char)(timers[i].timerConfig.length() + 1);
+        // The timerConfig already has +1 for each byte, so we can just store it directly
+        config += timers[i].timerConfig;
 
-        for (byte j = 0; j < timers[i].timerConfig.length(); j++) {
+    }
 
-            EEPROM.write(memPos, timers[i].timerConfig[j]);
-            #ifdef LIGHTS_DEBUG
-                Serial.println("Byte " + String(j) + " " + timers[i].timerConfig[j]);
-            #endif
+    // Write out the config to EEPROM
+    if (writeToEEPROM) {
 
-            // Increment memory position
-            memPos++;
+        for (uint16_t i = 0; i < config.length(); i++) {
+
+            EEPROM.write(i, config[i]);
 
         }
 
     }
 
     #ifdef LIGHTS_DEBUG
-        Serial.println("Timer data saved");
-
-        Serial.println("Lights.config updated");
-        Serial.println(config);
+        Serial.println("Lights config written to EEPROM: " + config);
     #endif
 
 }
@@ -606,10 +625,11 @@ void Lights::loadConfig() {
     // Clear any lights configuration currently stored
     channels.lightsConfig = "";
 
-    uint16_t memPos = 0;
+    // The data we need starts at byte 4
+    uint16_t memPos = 4;
 
     // Get the amount of bytes we need to read
-    byte bytesToRead = EEPROM.read(memPos);
+    uint16_t bytesToRead = EEPROM.read(memPos);
     #ifdef LIGHTS_DEBUG
         Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM");
     #endif
@@ -617,10 +637,11 @@ void Lights::loadConfig() {
     // Increment memory position
     memPos++;
 
-    // Read X amount of bytes from EEPROM to load lights config
-    for(byte i = 0; i < bytesToRead; i++) {
+    // Read X amount of bytes from EEPROM to load lights config. We did +1 for bytesToRead when storing it, so subtract 1
+    for(byte i = 0; i < bytesToRead - 1; i++) {
         // Store lights config byte-for-byte
         channels.lightsConfig += (char)EEPROM.read(memPos);
+
         #ifdef LIGHTS_DEBUG
             Serial.println("Byte " + String(i) + " " + String(EEPROM.read(memPos)));
         #endif
@@ -634,13 +655,13 @@ void Lights::loadConfig() {
         Serial.println("Lights config loaded: " + channels.lightsConfig);
     #endif
 
-    processColorData(channels.lightsConfig);
-
     // Load lights config into Lights.config, timer config will be added after this
     config = "";
-    config += (char)versionMajor;
-    config += (char)versionMinor;
-    config += (char)versionPatch;
+    config += (char)(versionMajor + 1);
+    config += (char)(versionMinor + 1);
+    config += (char)(versionPatch + 1);
+
+    config += (char)(channelCount + 1);
 
     config += (char)bytesToRead;
     config += channels.lightsConfig;
@@ -653,18 +674,19 @@ void Lights::loadConfig() {
 
         // Get the amount of bytes we need to read
         bytesToRead = EEPROM.read(memPos);
+
         #ifdef LIGHTS_DEBUG
             Serial.println("Reading " + String(bytesToRead) + " bytes from EEPROM============================");
         #endif
 
-        // Check data length. If it is lower than 16, the timer has not been configured yet
-        // Load a 0 (1, since we subtract 1 later) config into timerConfig
-        if (bytesToRead < 16) {
+        // Check data length. If it is lower than 16, the timer has not been configured yet. We did +1 for bytesToRead when storing it, so subtract 1
+        if (bytesToRead - 1 < 16) {
 
             #ifdef LIGHTS_DEBUG
                 Serial.println(String(bytesToRead) + " length incorrect, resetting timer to 0 config");
             #endif
 
+                // Load a 0 (1, since we subtract 1 later) config into timerConfig
                 resetTimer(i);
 
         } else {
@@ -672,10 +694,12 @@ void Lights::loadConfig() {
             // Increment memory position
             memPos++;
 
-            for (byte j = 0; j < bytesToRead; j++) {
+            // We did +1 for bytesToRead when storing it, so subtract 1
+            for (byte j = 0; j < bytesToRead - 1; j++) {
 
                 // Store timer config byte-for-byte
                 timers[i].timerConfig += (char)EEPROM.read(memPos);
+
                 #ifdef LIGHTS_DEBUG
                     Serial.println("Byte " + String(j) + " " + String(EEPROM.read(memPos)));
                 #endif
@@ -704,6 +728,9 @@ void Lights::loadConfig() {
         // For each timer, store the config in Lights.config
         config += (char)bytesToRead;
         config += timers[i].timerConfig;
+
+        // Finally, process the color data to return lights to last saved setting
+        processColorData(channels.lightsConfig);
 
     }
 
