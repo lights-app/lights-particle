@@ -62,6 +62,28 @@ void setup() {
     // Set timezone for timeLord (in minutes).
     lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
     lights.timeLord.Position(52.0116, 4.3571);
+
+    #ifdef LIGHTS_DEBUG
+
+        Serial.println("DST: " + String(isDST(Time.day(), Time.month(), Time.weekday()) ));
+        Serial.println("Wifi strength: " + String(WiFi.RSSI()));
+
+        Serial.print(Time.year());
+        Serial.print("/");
+        Serial.print(Time.month());
+        Serial.print("/");
+        Serial.print(Time.day());
+        Serial.println();
+
+        Serial.print(Time.hour());
+        Serial.print(":");
+        Serial.print(Time.minute());
+        Serial.print(":");
+        Serial.print(Time.second());
+        Serial.println();
+
+    #endif
+
     lights.updateSunTimes();
 
     lights.today[0] = 0;
@@ -92,6 +114,9 @@ void loop() {
         // Check for daylight savings time
         // Do this every hour to ensure Photon is not running behind/fast the first day after DST
         Time.zone(isDST(Time.day(), Time.month(), Time.weekday())? +2 : +1);
+
+        // Update sun times every hour. The first update may not work correctly 
+        lights.updateSunTimes();
         
         // Request time synchronization from the Particle Cloud
         Particle.syncTime();
