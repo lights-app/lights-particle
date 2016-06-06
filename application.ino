@@ -56,7 +56,7 @@ void setup() {
 
     // Set lights version. Can't be higher than 126 (1 will be automatically added)
     lights.versionMajor = 0;
-    lights.versionMinor = 0;
+    lights.versionMinor = 1;
     lights.versionPatch = 0;
 
     // Set timezone for timeLord (in minutes).
