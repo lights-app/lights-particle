@@ -729,12 +729,12 @@ void Lights::loadConfig() {
         config += (char)bytesToRead;
         config += timers[i].timerConfig;
 
-        // Finally, process the color data to return lights to last saved setting
-        processColorData(channels.lightsConfig);
-
     }
 
     Serial.println("Lights.config loaded");
-    saveConfig();
+    saveConfig(false);
+
+    // Finally, process the color data to return lights to last saved setting
+    processColorData(channels.lightsConfig);
 
 }

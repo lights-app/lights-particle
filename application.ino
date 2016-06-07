@@ -57,7 +57,7 @@ void setup() {
     // Set lights version. Can't be higher than 126 (1 will be automatically added)
     lights.versionMajor = 0;
     lights.versionMinor = 1;
-    lights.versionPatch = 0;
+    lights.versionPatch = 1;
 
     // Set timezone for timeLord (in minutes).
     lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
