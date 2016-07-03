@@ -220,6 +220,53 @@ int parseCommand(String args) {
         
     }
 
+    // Set antenna. This settings is remembered after reboot, so we only need to set it once
+    if (args[0] - 1 == 'a') {
+
+        #ifdef LIGHTS_DEBUG
+            Serial.print("Setting antenna to: ");
+        #endif
+
+        if (args[1] - 1 == 0) {
+
+            WiFi.selectAntenna(ANT_AUTO);
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Auto");
+            #endif
+
+            return 200;
+
+        }
+
+        if (args[1] - 1 == 1) {
+
+            WiFi.selectAntenna(ANT_INTERNAL);
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("Internal");
+            #endif
+                
+            return 200;
+
+        }
+
+        if (args[1] - 1 == 2) {
+
+            WiFi.selectAntenna(ANT_EXTERNAL);
+
+            #ifdef LIGHTS_DEBUG
+                Serial.println("External");
+            #endif
+                
+            return 200;
+
+        }
+
+        return 400;
+
+    }
+
     // Reset a specific timer
     if (args[0] - 1 == 'r') {
 
