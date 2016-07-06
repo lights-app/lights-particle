@@ -88,10 +88,13 @@ bool Lights::processColorData(String args) {
             #ifdef LIGHTS_DEBUG
                 Serial.print("Color channel " + String(i) +  ": ");
             #endif
-            
-            if (bitRead(args[1], i) == 1 ){
 
-                // Serial.print("Channel " + String(i) + " should be on");
+            // Channel on/off state is shifter 1 bit since we can't send 0
+            if (bitRead(args[1], i + 1) == 1 ){
+
+                #ifdef LIGHTS_DEBUG
+                    Serial.println("Channel " + String(i) + " should be on");
+                #endif
 
                 channels.channel[i].isOff = false;
 
@@ -133,6 +136,10 @@ bool Lights::processColorData(String args) {
 
                 channels.channel[i].turnOff();
                 channels.targetValueReached = false;
+
+                #ifdef LIGHTS_DEBUG
+                    Serial.println("Channel " + String(i) + " is off");
+                #endif
                 
             }
             
