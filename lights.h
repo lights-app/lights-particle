@@ -111,6 +111,7 @@ public:
     byte versionMajor;
     byte versionMinor;
     byte versionPatch;
+    byte antennaMode;
 
     byte today[6];
     byte sunriseHour;
@@ -128,6 +129,7 @@ public:
     void resetLights();
     void resetTimer(byte timerNumber);
     int combineBytes(byte bytes[], byte amountOfBytes);
+    int splitBytes(int num, byte amountOfBytes, byte* bytes);
     void updateSunTimes();
     void saveConfig(bool writeToEEPROM = true);
     void loadConfig();

@@ -514,6 +514,25 @@ int Lights::combineBytes(byte bytes[], byte amountOfBytes) {
 
 }
 
+int Lights::splitBytes(int num, byte amountOfBytes, byte* bytes) {
+    // Serial.println(amountOfBytes);
+    int value = 0;
+
+    for (byte i = 0; i < amountOfBytes; i++) {
+
+        value += bytes[i] * pow(127, (amountOfBytes - 1) - i);
+
+        bytes[i] = floor(num / pow(127, (amountOfBytes - 1) - i));
+
+        num -= bytes[i] * pow(127, (amountOfBytes - 1) - i);
+        // Serial.println(value);
+
+    }
+
+    return 1;
+
+}
+
 void Lights::updateSunTimes() {
 
     #ifdef LIGHTS_DEBUG
@@ -569,29 +588,29 @@ void Lights::updateSunTimes() {
 // writeToEEPROM is set to true as default
 void Lights::saveConfig(bool writeToEEPROM) {
 
-    uint16_t memPos = 0;
-
     #ifdef LIGHTS_DEBUG
         Serial.println("Writing " + String(channels.lightsConfig.length()) + " bytes to EEPROM");
     #endif
 
-    // Increment memory position
-    memPos++;
-
+    String tempConf = "";
     // Save lights config into Lights.config, timer config will be added after this
-    config = "";
+    tempConf = "";
+
     // Save version, must be higher than 1 to prevent null termination issues with Strings
-    config += (char)(versionMajor + 1);
-    config += (char)(versionMinor + 1);
-    config += (char)(versionPatch + 1);
+    tempConf += (char)(versionMajor + 1);
+    tempConf += (char)(versionMinor + 1);
+    tempConf += (char)(versionPatch + 1);
+
+    // Save antenna mode. 0 = auto, 1 = internal, 2 = external
+    tempConf += (char)(antennaMode + 1);
 
     // Save channelCount, must be higher than 1 to prevent null termination issues with Strings
-    config += (char)(channelCount + 1);
+    tempConf += (char)(channelCount + 1);
 
-    config += (char)(channels.lightsConfig.length() + 1);
+    tempConf += (char)(channels.lightsConfig.length() + 1);
 
     // The lightsConfig already has +1 for each byte, so we can just store it directly
-    config += channels.lightsConfig;
+    tempConf += channels.lightsConfig;
 
     #ifdef LIGHTS_DEBUG
         Serial.println();
@@ -604,11 +623,23 @@ void Lights::saveConfig(bool writeToEEPROM) {
         #endif
 
         // For each timer, store the config in Lights.config
-        config += (char)(timers[i].timerConfig.length() + 1);
+        tempConf += (char)(timers[i].timerConfig.length() + 1);
         // The timerConfig already has +1 for each byte, so we can just store it directly
-        config += timers[i].timerConfig;
+        tempConf += timers[i].timerConfig;
 
     }
+
+    //reset config
+    config = "";
+
+    // Save the total content length as the first byte
+    byte bytes[2];
+    splitBytes(tempConf.length(), 2, bytes);
+    config += (char)(bytes[0] + 1);
+    config += (char)(bytes[1] + 1);
+
+    // Then store the complete config after that 
+    config += tempConf;
 
     // Write out the config to EEPROM
     if (writeToEEPROM) {
@@ -632,8 +663,24 @@ void Lights::loadConfig() {
     // Clear any lights configuration currently stored
     channels.lightsConfig = "";
 
-    // The data we need starts at byte 4
-    uint16_t memPos = 4;
+    // Load lights config into Lights.config, timer config will be added after this
+    config = "";
+    config += (char)(EEPROM.read(0) - 1);
+    config += (char)(versionMajor + 1);
+    config += (char)(versionMinor + 1);
+    config += (char)(versionPatch + 1);
+
+    // Load the current antenna mode
+    antennaMode = (char)(EEPROM.read(4) - 1);
+
+    // Load the antenna mode into Lights.config
+    config += antennaMode + 1;
+
+    // Load the channel count into Lights.config
+    config += (char)(channelCount + 1);
+
+    // The data we need starts at byte 5
+    uint16_t memPos = 5;
 
     // Get the amount of bytes we need to read
     uint16_t bytesToRead = EEPROM.read(memPos);
@@ -661,14 +708,6 @@ void Lights::loadConfig() {
     #ifdef LIGHTS_DEBUG
         Serial.println("Lights config loaded: " + channels.lightsConfig);
     #endif
-
-    // Load lights config into Lights.config, timer config will be added after this
-    config = "";
-    config += (char)(versionMajor + 1);
-    config += (char)(versionMinor + 1);
-    config += (char)(versionPatch + 1);
-
-    config += (char)(channelCount + 1);
 
     config += (char)bytesToRead;
     config += channels.lightsConfig;

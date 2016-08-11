@@ -56,7 +56,7 @@ void setup() {
 
     // Set lights version. Can't be higher than 126 (1 will be automatically added)
     lights.versionMajor = 0;
-    lights.versionMinor = 1;
+    lights.versionMinor = 2;
     lights.versionPatch = 2;
 
     // Set timezone for timeLord (in minutes).
@@ -98,6 +98,26 @@ void setup() {
 
     // Load the lights/timer config from EEPROM
     lights.loadConfig();
+
+    // After config is loaded, assign antenna value
+    if (lights.antennaMode == 0) {
+
+        WiFi.selectAntenna(ANT_AUTO);
+
+    } else if (lights.antennaMode == 1) {
+
+        WiFi.selectAntenna(ANT_INTERNAL);
+
+    } else if (lights.antennaMode == 2) {
+
+        WiFi.selectAntenna(ANT_EXTERNAL);
+
+    } else {
+
+        // If the value in the config does not conform to the modes, set it to auto
+        WiFi.selectAntenna(ANT_AUTO);
+        lights.antennaMode = 0;
+    }
 
 }
 
@@ -223,13 +243,16 @@ int parseCommand(String args) {
     // Set antenna. This settings is remembered after reboot, so we only need to set it once
     if (args[0] - 1 == 'a') {
 
-        #ifdef LIGHTS_DEBUG
-            Serial.print("Setting antenna to: ");
-        #endif
-
         if (args[1] - 1 == 0) {
 
+            #ifdef LIGHTS_DEBUG
+                Serial.print("Setting antenna to AUTO");
+            #endif
+
             WiFi.selectAntenna(ANT_AUTO);
+
+            lights.antennaMode = 0;
+            lights.saveConfig();
 
             #ifdef LIGHTS_DEBUG
                 Serial.println("Auto");
@@ -241,7 +264,14 @@ int parseCommand(String args) {
 
         if (args[1] - 1 == 1) {
 
+            #ifdef LIGHTS_DEBUG
+                Serial.print("Setting antenna to INTERNAL");
+            #endif
+
             WiFi.selectAntenna(ANT_INTERNAL);
+
+            lights.antennaMode = 1;
+            lights.saveConfig();
 
             #ifdef LIGHTS_DEBUG
                 Serial.println("Internal");
@@ -253,7 +283,14 @@ int parseCommand(String args) {
 
         if (args[1] - 1 == 2) {
 
+            #ifdef LIGHTS_DEBUG
+                Serial.print("Setting antenna to EXTERNAL");
+            #endif
+
             WiFi.selectAntenna(ANT_EXTERNAL);
+
+            lights.antennaMode = 2;
+            lights.saveConfig();
 
             #ifdef LIGHTS_DEBUG
                 Serial.println("External");
