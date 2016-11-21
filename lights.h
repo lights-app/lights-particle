@@ -121,6 +121,10 @@ public:
     byte sunsetMinute;
     unsigned int sunsetZeroPoint;
 
+    // Ambilight variables
+    byte serialByteCount = 0;
+    char ambilightBuffer[channelCount * 3 * 2];
+
     // Functions
     bool processColorData(String args);
     bool processTimerData(String args, bool saveAfterProcessing);
@@ -133,5 +137,6 @@ public:
     void updateSunTimes();
     void saveConfig(bool writeToEEPROM = true);
     void loadConfig();
+    void serialPacketReceived();
 
 };

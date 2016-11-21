@@ -1,11 +1,13 @@
-#define LIGHTS_DEBUG
+// #define LIGHTS_DEBUG
 // #define LIGHTS_DETAILS
 
 // Enable system threading to ensure main loop continues regardless of cloud connection
 // Disable system threading for debugging. Threading enabled messes with Serial printing
-#ifndef LIGHTS_DEBUG
-    SYSTEM_THREAD(ENABLED);
-#endif
+// #ifndef LIGHTS_DEBUG
+//     SYSTEM_THREAD(ENABLED);
+// #endif
+
+SYSTEM_THREAD(DISABLED);
 
 // Set system mode to automatic to ensure Wifi will work automatically
 SYSTEM_MODE(AUTOMATIC);
@@ -46,7 +48,7 @@ void setup() {
 
     Particle.function("lights", parseCommand);
     Particle.variable("config", lights.config);
-    Serial.begin(9600);
+    Serial.begin(115200);
 
     // Check for daylight savings time
     Time.zone(isDST(Time.day(), Time.month(), Time.weekday())? +2 : +1);
@@ -176,6 +178,11 @@ void loop() {
 
         }
 
+    }
+
+    if (Serial.available() > 0) {
+
+        lights.serialPacketReceived();
     }
 
 }

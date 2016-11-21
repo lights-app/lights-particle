@@ -784,3 +784,45 @@ void Lights::loadConfig() {
     processColorData(channels.lightsConfig);
 
 }
+
+void Lights::serialPacketReceived() {
+
+    char recv = Serial.read();
+
+    // Received start flag, check if buffer is full. If so set PWMs
+    if (recv == 0xFF) {
+
+        if (serialByteCount == channelCount * 3 * 2) {
+
+            for (byte i = 0; i < channelCount; i++) {
+
+                for (byte j = 0; j < 3 * 2; j += 2){
+
+                    byte pos = (i * 3) + j;
+                    uint16_t val = ambilightBuffer[pos];
+                    val = val<<8;
+                    val |= ambilightBuffer[pos + 1];
+
+                    output.analogWrite16(channels.channel[i].pin[j/2], val);
+
+                }
+
+            }
+
+            serialByteCount = 0;
+
+        }
+
+    // Received init flag, echo current Lights values
+    } else if (recv == 0xFE) {
+
+
+    // No flag received, write to buffer
+    } else {
+
+        ambilightBuffer[serialByteCount] = recv;
+        serialByteCount++;
+
+    }
+
+}
