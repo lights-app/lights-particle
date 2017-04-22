@@ -24,6 +24,7 @@ void Channels::Channel::turnOn() {
 
         // Restore the values saved before turning off
         target[i] = savedValue[i];
+        isOff = false;
 
     }
 
@@ -89,7 +90,11 @@ bool Lights::processColorData(String args) {
                 Serial.print("Color channel " + String(i) +  ": ");
             #endif
 
-            // Channel on/off state is shifter 1 bit since we can't send 0
+            // Channel on/off state is shifted 1 bit since we can't send 0
+            // Channel states are saved in a single byte.
+            // 0 and >127 can't be sent, thus a maximum of 6 channel states are sent
+            // 01111110 would turn all channels on. Note that the first and last bit are unused
+            // due to the 1-127 limit
             if (bitRead(args[1], i + 1) == 1 ){
 
                 #ifdef LIGHTS_DEBUG
@@ -596,6 +601,8 @@ void Lights::saveConfig(bool writeToEEPROM) {
     // Save lights config into Lights.config, timer config will be added after this
     tempConf = "";
 
+    // Save the content length
+
     // Save version, must be higher than 1 to prevent null termination issues with Strings
     tempConf += (char)(versionMajor + 1);
     tempConf += (char)(versionMinor + 1);
@@ -787,41 +794,52 @@ void Lights::loadConfig() {
 
 void Lights::serialPacketReceived() {
 
-    char recv = Serial.read();
+    while(Serial.available() > 0){
 
-    // Received start flag, check if buffer is full. If so set PWMs
-    if (recv == 0xFF) {
+        char recv = Serial.read();
 
-        if (serialByteCount == channelCount * 3 * 2) {
+        // Received start flag, check if buffer is full. If so set PWMs
+        if (recv == 0xFF) {
 
-            for (byte i = 0; i < channelCount; i++) {
 
-                for (byte j = 0; j < 3 * 2; j += 2){
+            if (serialByteCount == channelCount * 3 * 2) {
 
-                    byte pos = (i * 3) + j;
-                    uint16_t val = ambilightBuffer[pos];
-                    val = val<<8;
-                    val |= ambilightBuffer[pos + 1];
 
-                    output.analogWrite16(channels.channel[i].pin[j/2], val);
+                for (byte i = 0; i < channelCount; i++) {
+
+                    for (byte j = 0; j < 3 * 2; j += 2){
+
+                        byte pos = (i * 3 * 2) + j;
+                        uint16_t val = ambilightBuffer[pos];
+                        val = val<<8;
+                        val |= ambilightBuffer[pos + 1];
+
+                        output.analogWrite16(channels.channel[i].pin[j/2], val);
+
+                    }
 
                 }
 
+                serialByteCount = 0;
+
+            } else {
+
+                USBSerial1.println("incorrect data len " + String(serialByteCount));
+                serialByteCount = 0;
+
             }
 
-            serialByteCount = 0;
+        // Received init flag, echo current Lights values
+        } else if (recv == 0xFE) {
+
+
+        // No flag received, write to buffer
+        } else {
+
+            ambilightBuffer[serialByteCount] = recv;
+            serialByteCount++;
 
         }
-
-    // Received init flag, echo current Lights values
-    } else if (recv == 0xFE) {
-
-
-    // No flag received, write to buffer
-    } else {
-
-        ambilightBuffer[serialByteCount] = recv;
-        serialByteCount++;
 
     }
 
