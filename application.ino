@@ -3,11 +3,11 @@
 
 // Enable system threading to ensure main loop continues regardless of cloud connection
 // Disable system threading for debugging. Threading enabled messes with Serial printing
-// #ifndef LIGHTS_DEBUG
-//     SYSTEM_THREAD(ENABLED);
-// #endif
-
-SYSTEM_THREAD(DISABLED);
+#ifndef LIGHTS_DEBUG
+    SYSTEM_THREAD(ENABLED);
+#else
+    SYSTEM_THREAD(DISABLED);
+#endif
 
 // Set system mode to automatic to ensure Wifi will work automatically
 SYSTEM_MODE(AUTOMATIC);
