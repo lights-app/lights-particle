@@ -670,24 +670,37 @@ void Lights::loadConfig() {
     // Clear any lights configuration currently stored
     channels.lightsConfig = "";
 
-    // Load lights config into Lights.config, timer config will be added after this
+    // Load EEPROM config into Lights.config, timer config will be added after this
     config = "";
-    config += (char)(EEPROM.read(0) - 1);
-    config += (char)(versionMajor + 1);
-    config += (char)(versionMinor + 1);
-    config += (char)(versionPatch + 1);
+    byte configLength[2];
+    configLength[0] = (char)(EEPROM.read(0) - 1);
+    configLength[1] = (char)(EEPROM.read(1) - 1);
+    // The content length stored in these two bytes does not include these bytes,
+    // so we add 2 to compensate
+    uint16_t eepromBytesToRead = combineBytes(configLength, 2) + 2;
 
-    // Load the current antenna mode
-    antennaMode = (char)(EEPROM.read(4) - 1);
+    if (eepromBytesToRead > 0) {
 
-    // Load the antenna mode into Lights.config
-    config += antennaMode + 1;
+        for (uint16_t i = 0; i < eepromBytesToRead; i++) {
 
-    // Load the channel count into Lights.config
-    config += (char)(channelCount + 1);
+            config += (char)EEPROM.read(i);
 
-    // The data we need starts at byte 5
-    uint16_t memPos = 5;
+        }
+
+    }
+
+    // Ensure that the config holds the actual version number
+    // This may have changed during a firmware update, meaning the config saved in EEPROM
+    // would not reflect the actual version number
+    config[2] = (char)(versionMajor + 1);
+    config[3] = (char)(versionMinor + 1);
+    config[4] = (char)(versionPatch + 1);
+
+    // Load the current antenna mode from EEPROM into Lights object
+    antennaMode = (char)(config[5] - 1);
+
+    // The data we need starts at byte 7
+    uint16_t memPos = 7;
 
     // Get the amount of bytes we need to read
     uint16_t bytesToRead = EEPROM.read(memPos);
@@ -715,9 +728,6 @@ void Lights::loadConfig() {
     #ifdef LIGHTS_DEBUG
         Serial.println("Lights config loaded: " + channels.lightsConfig);
     #endif
-
-    config += (char)bytesToRead;
-    config += channels.lightsConfig;
 
     // For every timer read X amount of bytes from EEPROM to load timer config
     for (byte i = 0; i < timerCount; i++) {
@@ -778,10 +788,6 @@ void Lights::loadConfig() {
             Serial.println("Timer " + String(i) + " config loaded: " + timers[i].timerConfig);
         #endif
 
-        // For each timer, store the config in Lights.config
-        config += (char)bytesToRead;
-        config += timers[i].timerConfig;
-
     }
 
     Serial.println("Lights.config loaded");
@@ -800,7 +806,6 @@ void Lights::serialPacketReceived() {
 
         // Received start flag, check if buffer is full. If so set PWMs
         if (recv == 0xFF) {
-
 
             if (serialByteCount == channelCount * 3 * 2) {
 
@@ -838,6 +843,12 @@ void Lights::serialPacketReceived() {
 
             ambilightBuffer[serialByteCount] = recv;
             serialByteCount++;
+
+        }
+
+        if (millis() % 10000 == 0) {
+
+            Particle.process();
 
         }
 
