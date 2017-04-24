@@ -48,10 +48,12 @@ void setup() {
 
     Particle.function("lights", parseCommand);
     Particle.variable("config", lights.config);
-    Serial.begin(115200);
+    Particle.variable("version", lights.versionString);
+    Serial.begin();
+    USBSerial1.begin();
 
     // Check for daylight savings time
-    Time.zone(isDST(Time.day(), Time.month(), Time.weekday())? +2 : +1);
+    Time.zone(Time.isDST()? +2 : +1);
 
     // Request time synchronization from the Particle Cloud
     Particle.syncTime();
@@ -59,30 +61,37 @@ void setup() {
     // Set lights version. Can't be higher than 126 (1 will be automatically added)
     lights.versionMajor = 0;
     lights.versionMinor = 2;
-    lights.versionPatch = 2;
+    lights.versionPatch = 3;
+
+    lights.versionString = (char)(lights.versionMajor + 1);
+    lights.versionString += (char)(lights.versionMinor + 1);
+    lights.versionString += (char)(lights.versionPatch + 1);
 
     // Set timezone for timeLord (in minutes).
-    lights.timeLord.TimeZone(isDST(Time.day(), Time.month(), Time.weekday())? 2 * 60 : 1 * 60);
+    lights.timeLord.TimeZone(Time.isDST()? 2 * 60 : 1 * 60);
     lights.timeLord.Position(52.0116, 4.3571);
 
     #ifdef LIGHTS_DEBUG
 
-        Serial.println("DST: " + String(isDST(Time.day(), Time.month(), Time.weekday()) ));
-        Serial.println("Wifi strength: " + String(WiFi.RSSI()));
+    Serial.println("DST: " + String(Time.isDST() ));
+    Serial.println("Wifi strength: " + String(WiFi.RSSI()));
 
-        Serial.print(Time.year());
-        Serial.print("/");
-        Serial.print(Time.month());
-        Serial.print("/");
-        Serial.print(Time.day());
-        Serial.println();
+    Serial.print(Time.year());
+    Serial.print("/");
+    Serial.print(Time.month());
+    Serial.print("/");
+    Serial.print(Time.day());
+    Serial.println();
 
-        Serial.print(Time.hour());
-        Serial.print(":");
-        Serial.print(Time.minute());
-        Serial.print(":");
-        Serial.print(Time.second());
-        Serial.println();
+    Serial.print(Time.hour());
+    Serial.print(":");
+    Serial.print(Time.minute());
+    Serial.print(":");
+    Serial.print(Time.second());
+    Serial.println();
+
+    Serial.print("USB Baud rate");
+    Serial.println(Serial.baud());
 
     #endif
 
@@ -135,7 +144,7 @@ void loop() {
 
         // Check for daylight savings time
         // Do this every hour to ensure Photon is not running behind/fast the first day after DST
-        Time.zone(isDST(Time.day(), Time.month(), Time.weekday())? +2 : +1);
+        Time.zone(Time.isDST()? +2 : +1);
 
         // Update sun times every hour. The first update may not work correctly 
         lights.updateSunTimes();
@@ -148,19 +157,19 @@ void loop() {
 
     // Execute things every second
     if (millis() % 1000 == 0) {
-        
+
         lights.checkTimers();
 
         #ifdef LIGHTS_DETAILS
 
-            Serial.println("Wifi strength: " + String(WiFi.RSSI()));
+        Serial.println("Wifi strength: " + String(WiFi.RSSI()));
 
-            Serial.print(Time.hour());
-            Serial.print(":");
-            Serial.print(Time.minute());
-            Serial.print(":");
-            Serial.print(Time.second());
-            Serial.println();
+        Serial.print(Time.hour());
+        Serial.print(":");
+        Serial.print(Time.minute());
+        Serial.print(":");
+        Serial.print(Time.second());
+        Serial.println();
 
         #endif
 
@@ -180,10 +189,11 @@ void loop() {
 
     }
 
-    if (Serial.available() > 0) {
+}
 
-        lights.serialPacketReceived();
-    }
+void serialEvent() {
+
+    lights.serialPacketReceived();
 
 }
 
@@ -194,8 +204,8 @@ int parseCommand(String args) {
     if (args[0] - 1 == 'c') {
 
         #ifdef LIGHTS_DEBUG
-            Serial.println("Received color data");
-            Serial.println(lights.channels.targetValueReached);
+        Serial.println("Received color data");
+        Serial.println(lights.channels.targetValueReached);
         #endif
         
         if (lights.processColorData(args)) {
@@ -214,7 +224,7 @@ int parseCommand(String args) {
     if (args[0] - 1 == 't') {
 
         #ifdef LIGHTS_DEBUG
-            Serial.println("Received timer data");
+        Serial.println("Received timer data");
         #endif
         
         if (lights.processTimerData(args, true)) {
@@ -229,9 +239,52 @@ int parseCommand(String args) {
         
     }
 
+    // Set command 
     if (args[0] - 1 == 's') {
 
-        lights.updateSunTimes();
+        // Update the sun times when
+        if (args[1] - 1 == 's') {
+            lights.updateSunTimes();
+        }
+
+        // Turn off all channels
+        if (args[1] - 1 == '0') {
+
+            #ifdef LIGHTS_DEBUG
+            Serial.println("Turning off all channels");
+            #endif
+
+            for (byte i = 0; i < lights.channelCount; i++) {
+
+                lights.channels.channel[i].turnOff();
+
+            }
+
+            lights.channels.prevChannelsState = lights.channels.lightsConfig[1];
+            lights.channels.lightsConfig[1] = 1;
+            lights.channels.targetValueReached = false;
+            lights.channels.startTime = millis();
+
+        }
+
+        // Turn on all channels
+        if (args[1] - 1 == '1') {
+
+            #ifdef LIGHTS_DEBUG
+            Serial.println("Turning on all channels");
+            #endif
+
+            for (byte i = 0; i < lights.channelCount; i++) {
+
+                lights.channels.channel[i].turnOn();
+                
+            }
+
+            lights.channels.lightsConfig[1] = lights.channels.prevChannelsState;
+            lights.channels.targetValueReached = false;
+            lights.channels.startTime = millis();
+
+        }
 
     }
 
@@ -244,7 +297,7 @@ int parseCommand(String args) {
     if (args[0] - 1 == 'l') {
 
         lights.loadConfig();
-        
+
     }
 
     // Set antenna. This settings is remembered after reboot, so we only need to set it once
@@ -253,7 +306,7 @@ int parseCommand(String args) {
         if (args[1] - 1 == 0) {
 
             #ifdef LIGHTS_DEBUG
-                Serial.print("Setting antenna to AUTO");
+            Serial.print("Setting antenna to AUTO");
             #endif
 
             WiFi.selectAntenna(ANT_AUTO);
@@ -262,7 +315,7 @@ int parseCommand(String args) {
             lights.saveConfig();
 
             #ifdef LIGHTS_DEBUG
-                Serial.println("Auto");
+            Serial.println("Auto");
             #endif
 
             return 200;
@@ -272,7 +325,7 @@ int parseCommand(String args) {
         if (args[1] - 1 == 1) {
 
             #ifdef LIGHTS_DEBUG
-                Serial.print("Setting antenna to INTERNAL");
+            Serial.print("Setting antenna to INTERNAL");
             #endif
 
             WiFi.selectAntenna(ANT_INTERNAL);
@@ -281,9 +334,9 @@ int parseCommand(String args) {
             lights.saveConfig();
 
             #ifdef LIGHTS_DEBUG
-                Serial.println("Internal");
+            Serial.println("Internal");
             #endif
-                
+
             return 200;
 
         }
@@ -291,7 +344,7 @@ int parseCommand(String args) {
         if (args[1] - 1 == 2) {
 
             #ifdef LIGHTS_DEBUG
-                Serial.print("Setting antenna to EXTERNAL");
+            Serial.print("Setting antenna to EXTERNAL");
             #endif
 
             WiFi.selectAntenna(ANT_EXTERNAL);
@@ -300,9 +353,9 @@ int parseCommand(String args) {
             lights.saveConfig();
 
             #ifdef LIGHTS_DEBUG
-                Serial.println("External");
+            Serial.println("External");
             #endif
-                
+
             return 200;
 
         }
@@ -315,7 +368,7 @@ int parseCommand(String args) {
     if (args[0] - 1 == 'r') {
 
         lights.resetTimer(args[1] - 1);
-        
+
     }
 
     // Reset the whole memory
@@ -343,9 +396,9 @@ int parseCommand(String args) {
         lights.saveConfig();
 
         Serial.println("Memory reset complete");
-        
+
     }
-    
+
 
     return args[0];
 

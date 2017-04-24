@@ -36,6 +36,7 @@ public:
 
         // Channels();
     String lightsConfig = "";
+    byte prevChannelsState;
 
     unsigned int interpolationTime;
     unsigned int startTime;
@@ -111,6 +112,7 @@ public:
     byte versionMajor;
     byte versionMinor;
     byte versionPatch;
+    String versionString = "";
     byte antennaMode;
 
     byte today[6];
@@ -124,6 +126,7 @@ public:
     // Ambilight variables
     byte serialByteCount = 0;
     char ambilightBuffer[channelCount * 3 * 2];
+    unsigned long ambiStTime;
 
     // Functions
     bool processColorData(String args);
