@@ -61,7 +61,7 @@ void setup() {
     // Set lights version. Can't be higher than 126 (1 will be automatically added)
     lights.versionMajor = 0;
     lights.versionMinor = 2;
-    lights.versionPatch = 3;
+    lights.versionPatch = 4;
 
     lights.versionString = (char)(lights.versionMajor + 1);
     lights.versionString += (char)(lights.versionMinor + 1);
